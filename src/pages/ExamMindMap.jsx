@@ -326,6 +326,14 @@ export default function ExamMindMap() {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
   }, []);
 
+  // ── Dialog info ─────────────────────────────────────────────────────────
+  const dialogNode = dialogNodeId ? nodeMap[dialogNodeId] : null;
+  const dialogStatus = dialogNodeId ? nodeStatuses[dialogNodeId] : null;
+  const isReviewMode = dialogStatus === 'correct' || dialogStatus === 'incorrect';
+  const isAnswerMode = dialogStatus === 'current';
+  const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
+  const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
+
   const submitAnswer = useCallback(async (ans) => {
     if (!dialogNode || !ans.trim() || !isAnswerMode || blockRef.current || answerPending) return;
     blockRef.current = true;
@@ -417,14 +425,6 @@ export default function ExamMindMap() {
   }, [nodeStatuses, currentQueueNodeId, answerResult, handleContinue]);
 
   const closeDialog = () => setDialogNodeId(null);
-
-  // ── Dialog info ─────────────────────────────────────────────────────────
-  const dialogNode = dialogNodeId ? nodeMap[dialogNodeId] : null;
-  const dialogStatus = dialogNodeId ? nodeStatuses[dialogNodeId] : null;
-  const isReviewMode = dialogStatus === 'correct' || dialogStatus === 'incorrect';
-  const isAnswerMode = dialogStatus === 'current';
-  const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
-  const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
 
   // ── Hoàn thành bài ──────────────────────────────────────────────────────
   const completeAttempt = async (finalScore) => {
