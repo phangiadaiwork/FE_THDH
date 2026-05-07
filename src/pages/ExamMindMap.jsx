@@ -525,6 +525,7 @@ export default function ExamMindMap() {
     setDialogNodeId(null);  
     setFinished(false);
     setSubmitResult(null);
+    setNodeStatuses({});
     setResetting(true);
     try {
       const { data } = await api.post('/api/attempts/start', { examId: parseInt(id) });
