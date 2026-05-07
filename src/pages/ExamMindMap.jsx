@@ -468,6 +468,12 @@ export default function ExamMindMap() {
   const answeredCount = totalNodes - dfsQueue.length;
   const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
 
+  const completedCount = useMemo(
+    () => Object.values(nodeStatuses).filter(s => s === 'correct' || s === 'incorrect').length,
+    [nodeStatuses]
+  );
+  const allAnswered = totalNodes > 0 && completedCount === totalNodes;
+
   const onNodeClick = useCallback(
     (_evt, node) => {
       const nid = parseInt(node.id);
@@ -621,15 +627,15 @@ export default function ExamMindMap() {
           size="small"
           sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
         />
-        {dfsQueue.length === 0 && !finished && (
+         {allAnswered && !finished && (
           <Button
-            size={isMobile ? 'small' : 'small'}
+            size="small"
             variant="contained"
             color="success"
             onClick={() => completeAttempt(scoreDisplay)}
             disabled={actionBusy || finished}
             endIcon={actionBusy ? <CircularProgress size={16} /> : undefined}
-            sx={{ textTransform: 'none', px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+            sx={{ textTransform: 'none' }}
           >
             Nộp bài
           </Button>
@@ -724,7 +730,7 @@ export default function ExamMindMap() {
                 py: { xs: 0.5, sm: 1 },
               }}
             >
-              ▶ {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
+              {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
             </Button>
           )}
           {!finished && currentQueueNodeId && (
