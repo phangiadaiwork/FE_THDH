@@ -863,16 +863,30 @@ export default function ExamMindMap() {
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
                 Xem sơ đồ
               </Button>
-              <Button
-                variant="contained"
-                onClick={handleContinue}
-                size="large"
-                sx={{ flex: 1 }}
-                disabled={actionBusy || dfsQueue.length <= 1}
-                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
-              >
-                Câu tiếp theo
-              </Button>
+              {dfsQueue.length > 1 ? (
+                <Button
+                  variant="contained"
+                  onClick={handleContinue}
+                  size="large"
+                  sx={{ flex: 1 }}
+                  disabled={actionBusy}
+                  endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
+                >
+                  Câu tiếp theo
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => { if (!submitting) completeAttempt(scoreDisplay); }}
+                  size="large"
+                  sx={{ flex: 1 }}
+                  disabled={actionBusy}
+                  endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
+                >
+                  Nộp bài
+                </Button>
+              )}
             </>
           )}
           {isReviewMode && dialogNodeId !== currentQueueNodeId && (
