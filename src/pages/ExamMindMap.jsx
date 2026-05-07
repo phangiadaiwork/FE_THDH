@@ -892,19 +892,16 @@ export default function ExamMindMap() {
           {/* Chế độ xem lại */}
           {isReviewMode && (
             <Box>
-          
               {hasOptions && (
                 <OptionGrid
                   options={dialogNode.options}
                   correctAnswer={dialogNode.correctAnswer}
                   chosenAnswer={reviewData?.answer}
                   readOnly
-                  sx ={{ mb: 2 }}
                 />
               )}
-                  <Divider sx={{ mb: 2 }} />
-                 {reviewData?.isCorrect ? (
-                <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1.5 }}>
+              {reviewData?.isCorrect ? (
+                <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1.5, mt: 1.5 }}>
                   <strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em>
                 </Alert>
               ) : (
