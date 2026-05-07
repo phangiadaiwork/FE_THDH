@@ -506,6 +506,7 @@ export default function ExamMindMap() {
   const completeAttempt = async (finalScore) => {
     if (submitting) return;
     setSubmitting(true);
+    setDialogNodeId(null); 
     try {
       if (attemptIdRef.current) {
         const { data } = await api.post('/api/attempts/complete', {
@@ -988,31 +989,31 @@ export default function ExamMindMap() {
             </>
           )}
           {isReviewMode && finished && (
-  <Button variant="outlined" onClick={closeDialog} fullWidth disabled={actionBusy}>
-    Đóng
-  </Button>
-)}
-{isReviewMode && !finished && dialogNodeId === currentQueueNodeId && (
-  <>
-    <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
-      Xem sơ đồ
-    </Button>
-    {dfsQueue.length <= 1 ? (
-      <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex: 1, minWidth: 120 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
-        Nộp bài
-      </Button>
-    ) : (
-      <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex: 1, minWidth: 120 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
-        Câu tiếp theo
-      </Button>
-    )}
-  </>
-)}
-{isReviewMode && !finished && dialogNodeId !== currentQueueNodeId && (
-  <Button variant="outlined" onClick={handleCloseAndFocus} fullWidth disabled={actionBusy}>
-    Xem sơ đồ
-  </Button>
-)}
+            <Button variant="outlined" onClick={closeDialog} fullWidth disabled={actionBusy}>
+              Đóng
+            </Button>
+          )}
+          {isReviewMode && !finished && dialogNodeId === currentQueueNodeId && (
+            <>
+              <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
+                Xem sơ đồ
+              </Button>
+              {dfsQueue.length <= 1 ? (
+                <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex: 1, minWidth: 120 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                  Nộp bài
+                </Button>
+              ) : (
+                <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex: 1, minWidth: 120 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                  Câu tiếp theo
+                </Button>
+              )}
+            </>
+          )}
+          {isReviewMode && !finished && dialogNodeId !== currentQueueNodeId && (
+            <Button variant="outlined" onClick={handleCloseAndFocus} fullWidth disabled={actionBusy}>
+              Xem sơ đồ
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
