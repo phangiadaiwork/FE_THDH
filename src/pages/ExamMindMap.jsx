@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Controls,
@@ -143,6 +143,15 @@ export default function ExamMindMap() {
   const [nodeMap, setNodeMap] = useState({});
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
+
+  // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc) — tính đồng bộ, không race
+  const displayNodes = useMemo(() =>
+    rfNodes.map((n) => ({
+      ...n,
+      data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'locked' },
+    })),
+    [rfNodes, nodeStatuses]
+  );
   const [loading, setLoading] = useState(true);
 
   const [dfsOrder, setDfsOrder] = useState([]);
@@ -298,13 +307,10 @@ export default function ExamMindMap() {
   const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
   const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
 
-  // ── Helper: cập nhật status 1 node trực tiếp trên cả state lẫn rfNodes ──
+  // ── Helper: cập nhật status — displayNodes (useMemo) tự sync lên map ──
   const applyNodeStatus = useCallback((nodeId, status) => {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
-    setRfNodes((prev) => prev.map((n) =>
-      parseInt(n.id) === nodeId ? { ...n, data: { ...n.data, status } } : n
-    ));
-  }, [setRfNodes]);
+  }, []);
 
   // ── Trả lời câu hỏi ──────────────────────────────────────────────────────
   const handleAnswer = async () => {
@@ -390,7 +396,7 @@ export default function ExamMindMap() {
     if (node) {
       rfInstance.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
     }
-  }, [rfInstance, currentQueueNodeId, rfNodes]);
+  }, [rfInstance, currentQueueNodeId, rfNodes]); // rfNodes dùng để lấy position (không phải displayNodes)
 
   if (loading) {
     return (
@@ -442,7 +448,7 @@ export default function ExamMindMap() {
 
       <Box sx={{ flex: 1, position: 'relative' }}>
         <ReactFlow
-          nodes={rfNodes}
+          nodes={displayNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
