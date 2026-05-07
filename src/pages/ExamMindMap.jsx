@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Controls,
@@ -24,10 +24,6 @@ import {
   CircularProgress,
   LinearProgress,
   Paper,
-  FormControl,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
   Tooltip,
   IconButton,
   Divider,
@@ -132,8 +128,14 @@ function getDFSOrder(root) {
   return order;
 }
 
-// ─── Hàm hiển thị lưới đáp án trắc nghiệm (dùng chung) ──
-function renderOptionsReview(options, correctAnswer, chosenAnswer) {
+// ─── Component lưới lựa chọn dùng chung cho nhập và xem lại ──
+const OptionGrid = memo(({ options, correctAnswer, chosenAnswer, onSelect, readOnly }) => {
+  const handleClick = (letter) => {
+    if (!readOnly && onSelect) {
+      onSelect(letter);
+    }
+  };
+
   return (
     <Box sx={{
       display: 'grid',
@@ -143,31 +145,62 @@ function renderOptionsReview(options, correctAnswer, chosenAnswer) {
     }}>
       {options.map((opt, i) => {
         const letter = opt.charAt(0);
-        const isCorrect = letter === correctAnswer;
         const isChosen = letter === chosenAnswer;
+        const isCorrectAnswer = letter === correctAnswer;
+
+        let borderColor = '#e0e0e0';
+        let bgColor = 'white';
+        let icon = null;
+
+        if (readOnly) {
+          // Chế độ xem kết quả: đúng xanh, sai đỏ
+          if (isCorrectAnswer) {
+            borderColor = '#43a047';
+            bgColor = '#e8f5e9';
+            icon = <CheckCircleIcon sx={{ color: '#43a047', fontSize: 16 }} />;
+          } else if (isChosen && !isCorrectAnswer) {
+            borderColor = '#e53935';
+            bgColor = '#fce4ec';
+            icon = <CancelIcon sx={{ color: '#e53935', fontSize: 16 }} />;
+          }
+        } else {
+          // Chế độ nhập: đã chọn thì viền xanh + check
+          if (isChosen) {
+            borderColor = '#43a047';
+            bgColor = '#e8f5e9';
+            icon = <CheckCircleIcon sx={{ color: '#43a047', fontSize: 16 }} />;
+          }
+        }
+
         return (
           <Box
             key={i}
+            onClick={() => handleClick(letter)}
             sx={{
               p: 1,
               border: '1px solid',
-              borderColor: isCorrect ? '#43a047' : isChosen ? '#e53935' : '#e0e0e0',
-              bgcolor: isCorrect ? '#e8f5e9' : isChosen ? '#fce4ec' : 'white',
+              borderColor,
+              bgcolor: bgColor,
               borderRadius: 1.5,
               display: 'flex',
               alignItems: 'center',
               gap: 1,
+              cursor: readOnly ? 'default' : 'pointer',
+              transition: 'all 0.18s ease',
+              '&:hover': !readOnly ? {
+                bgcolor: isChosen ? '#e8f5e9' : '#fafafa',
+                borderColor: isChosen ? '#43a047' : '#f9a825',
+              } : {},
             }}
           >
             <Typography variant="body2" sx={{ flex: 1 }}>{opt}</Typography>
-            {isCorrect && <CheckCircleIcon sx={{ color: '#43a047', fontSize: 16 }} />}
-            {isChosen && !isCorrect && <CancelIcon sx={{ color: '#e53935', fontSize: 16 }} />}
+            {icon}
           </Box>
         );
       })}
     </Box>
   );
-}
+});
 
 // ────────────────────────────────────────────────────────────────────────────
 export default function ExamMindMap() {
@@ -176,7 +209,6 @@ export default function ExamMindMap() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // React Flow instance ref
   const rfInstanceRef = useRef(null);
 
   const [exam, setExam] = useState(null);
@@ -202,7 +234,7 @@ export default function ExamMindMap() {
   const [answerPending, setAnswerPending] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [focusCurrentRequested, setFocusCurrentRequested] = useState(false);
-  const blockRef = useRef(false); // chống double-click / double-submit
+  const blockRef = useRef(false);
 
   const [finished, setFinished] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
@@ -210,7 +242,6 @@ export default function ExamMindMap() {
   const [rfInstance, setRfInstance] = useState(null);
   const actionBusy = answerPending || submitting || resetting;
 
-  // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc)
   const displayNodes = useMemo(() =>
     rfNodes.map((n) => ({
       ...n,
@@ -219,7 +250,6 @@ export default function ExamMindMap() {
     [rfNodes, nodeStatuses]
   );
 
-  // ── Build map lên React Flow ──────────────────────────────────────────────
   const buildMap = useCallback((flatNodes, positions, initStatuses, queue) => {
     setRfNodes(flatNodes.map((n) => ({
       id: String(n.id),
@@ -296,7 +326,6 @@ export default function ExamMindMap() {
     buildMap(flatNodes, positions, statuses, remaining);
   }, [buildMap]);
 
-  // ── Fetch & init ──────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       try {
@@ -321,12 +350,10 @@ export default function ExamMindMap() {
     init();
   }, [id, initFresh, restoreProgress]);
 
-  // ── Core submit: dùng chung cho text input và option click ──────────────
   const applyNodeStatus = useCallback((nodeId, status) => {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
   }, []);
 
-  // ── Dialog info ─────────────────────────────────────────────────────────
   const dialogNode = dialogNodeId ? nodeMap[dialogNodeId] : null;
   const dialogStatus = dialogNodeId ? nodeStatuses[dialogNodeId] : null;
   const isReviewMode = dialogStatus === 'correct' || dialogStatus === 'incorrect';
@@ -342,7 +369,6 @@ export default function ExamMindMap() {
     const correct = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
     const currentNodeId = dialogNodeId;
 
-    // Lưu answer nhưng KHÔNG hiện kết quả ngay
     setAnswer(ans.trim());
     setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: ans.trim(), isCorrect: correct } }));
 
@@ -356,7 +382,6 @@ export default function ExamMindMap() {
         });
       }
 
-      // Chỉ update kết quả SAU KHI API success
       if (correct) {
         scoreRef.current += dialogNode.points;
         setScoreDisplay(scoreRef.current);
@@ -375,7 +400,6 @@ export default function ExamMindMap() {
   const handleAnswer = () => submitAnswer(answer);
   const handleSelectOption = (letter) => setAnswer(letter);
 
-  // ── Tiếp tục sang node kế tiếp (KHÔNG dùng cho nút Nộp bài) ──
   const handleContinue = useCallback(() => {
     if (actionBusy || (blockRef.current && answerResult === null)) return;
     blockRef.current = false;
@@ -395,22 +419,19 @@ export default function ExamMindMap() {
       applyNodeStatus(nextId, 'current');
       setDialogNodeId(nextId);
     } else {
-      setDialogNodeId(null); // Đơn thuần đóng dialog, không nộp bài
+      setDialogNodeId(null);
     }
   }, [dfsQueue, answerResult, actionBusy, applyNodeStatus]);
 
-  // ── current node ID ── (DEFINED TRƯỚC onNodeClick)
   const currentQueueNodeId = dfsQueue[0] ?? null;
   const answeredCount = totalNodes - dfsQueue.length;
   const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
 
-  // ── Click node ──
   const onNodeClick = useCallback((_evt, node) => {
     const nid = parseInt(node.id);
     const status = nodeStatuses[nid];
     if (status === 'locked') return;
 
-    // Nếu ấn node khác node hiện tại và đã có kết quả → tự động chuyển
     if (nid !== currentQueueNodeId && answerResult !== null) {
       handleContinue();
     } else {
@@ -425,7 +446,6 @@ export default function ExamMindMap() {
 
   const closeDialog = () => setDialogNodeId(null);
 
-  // ── Hoàn thành bài ──────────────────────────────────────────────────────
   const completeAttempt = async (finalScore) => {
     if (submitting) return;
     setSubmitting(true);
@@ -445,7 +465,6 @@ export default function ExamMindMap() {
     }
   };
 
-  // ── Làm lại ─────────────────────────────────────────────────────────────
   const handleReset = async () => {
     if (!exam) return;
     setFinished(false);
@@ -523,7 +542,6 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
-        {/* Nút Nộp bài dự phòng khi dialog đã đóng */}
         {dfsQueue.length === 0 && !finished && (
           <Button
             size="small"
@@ -583,7 +601,7 @@ export default function ExamMindMap() {
               onClick={() => { setAnswer(''); setAnswerResult(null); setDialogNodeId(currentQueueNodeId); }}
               sx={{ boxShadow: '0 4px 14px rgba(0,0,0,0.3)', borderRadius: 3, maxWidth: 260 }}
             >
-              ▶ {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
+              {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
             </Button>
           )}
           {!finished && currentQueueNodeId && (
@@ -615,75 +633,111 @@ export default function ExamMindMap() {
         <DialogContent dividers>
           <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>{dialogNode?.question}</Typography>
 
+          {/* Chế độ trả lời – chưa có kết quả */}
           {isAnswerMode && answerResult === null && (
             hasOptions ? (
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
-                {dialogNode.options.map((opt, i) => {
-                  const letter = opt.charAt(0);
-                  const checked = answer === letter;
-                  return (
-                    <Box key={i} role="button" tabIndex={0} onClick={() => !actionBusy && handleSelectOption(letter)} onKeyDown={(e) => e.key === 'Enter' && !actionBusy && handleSelectOption(letter)}
-                      sx={{
-                        m:0, px:1.5, py:0.95, border:'1px solid', borderColor: checked ? '#43a047' : '#e0e0e0', borderRadius:1.5, bgcolor: checked ? '#e8f5e9' : 'white', boxShadow:'none', transition:'all 0.18s ease', cursor: actionBusy?'default':'pointer',
-                        '&:hover': actionBusy ? {} : { bgcolor: checked ? '#e8f5e9' : '#fafafa', borderColor: checked ? '#43a047' : '#f9a825' }
-                      }}>
-                      <FormControlLabel value={letter} control={<Radio checked={checked} />} label={opt} disabled={actionBusy}
-                        sx={{ m:0, width:'100%', '& .MuiFormControlLabel-label':{ flex:1, fontSize:'0.95rem' } }} />
-                    </Box>
-                  );
-                })}
-              </Box>
+              <OptionGrid
+                options={dialogNode.options}
+                chosenAnswer={answer}
+                correctAnswer={null}
+                onSelect={handleSelectOption}
+                readOnly={false}
+              />
             ) : (
-              <TextField fullWidth label="Câu trả lời của bạn" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAnswer()}
-                autoFocus key={dialogNodeId} placeholder="Nhập câu trả lời rồi nhấn Enter..." disabled={actionBusy}
-                name={`essay-answer-${dialogNodeId ?? 'current'}`} autoComplete="off" data-1p-ignore="true" data-lpignore="true"
-                inputProps={{ autoComplete:'off', spellCheck:false, autoCorrect:'off', autoCapitalize:'none', 'data-1p-ignore':'true', 'data-lpignore':'true' }} />
+              <TextField
+                fullWidth
+                label="Câu trả lời của bạn"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAnswer()}
+                autoFocus
+                key={dialogNodeId}
+                placeholder="Nhập câu trả lời rồi nhấn Enter..."
+                disabled={actionBusy}
+                name={`essay-answer-${dialogNodeId ?? 'current'}`}
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                inputProps={{
+                  autoComplete: 'off',
+                  spellCheck: false,
+                  autoCorrect: 'off',
+                  autoCapitalize: 'none',
+                  'data-1p-ignore': 'true',
+                  'data-lpignore': 'true',
+                }}
+              />
             )
           )}
 
+          {/* Chế độ trả lời – đã có kết quả */}
           {isAnswerMode && answerResult !== null && (
             <>
               {answerResult === 'correct' ? (
                 <Alert severity="success" icon={<CheckCircleIcon />}><strong>Chính xác!</strong> +{dialogNode?.points} điểm</Alert>
               ) : (
                 <Box>
-                  <Alert severity="error" sx={{ mb:1 }}><strong>Chưa đúng!</strong> Bạn trả lời: <em>{answer}</em><br />Đáp án đúng: <strong>{hasOptions ? dialogNode.options.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer : dialogNode?.correctAnswer}</strong></Alert>
+                  <Alert severity="error" sx={{ mb: 1 }}><strong>Chưa đúng!</strong> Bạn trả lời: <em>{answer}</em><br />Đáp án đúng: <strong>{hasOptions ? dialogNode.options.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer : dialogNode?.correctAnswer}</strong></Alert>
                   {dialogNode?.hint && <Alert severity="info" icon={<LightbulbIcon />}><strong>Gợi ý:</strong> {dialogNode.hint}</Alert>}
                 </Box>
               )}
-              {hasOptions && renderOptionsReview(dialogNode.options, dialogNode.correctAnswer, answer)}
+              {hasOptions && (
+                <OptionGrid
+                  options={dialogNode.options}
+                  correctAnswer={dialogNode.correctAnswer}
+                  chosenAnswer={answer}
+                  readOnly
+                />
+              )}
             </>
           )}
 
+          {/* Chế độ xem lại */}
           {isReviewMode && (
             <Box>
-              <Divider sx={{ mb:2 }} />
+              <Divider sx={{ mb: 2 }} />
               {reviewData?.isCorrect ? (
-                <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb:1.5 }}><strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em></Alert>
+                <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1.5 }}><strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em></Alert>
               ) : (
-                <Alert severity="error" icon={<CancelIcon />} sx={{ mb:1.5 }}><strong>Bạn đã trả lời sai.</strong> Câu trả lời của bạn: <em>{reviewData?.answer}</em><br />Đáp án đúng: <strong>{hasOptions ? dialogNode.options?.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer : dialogNode?.correctAnswer}</strong></Alert>
+                <Alert severity="error" icon={<CancelIcon />} sx={{ mb: 1.5 }}><strong>Bạn đã trả lời sai.</strong> Câu trả lời của bạn: <em>{reviewData?.answer}</em><br />Đáp án đúng: <strong>{hasOptions ? dialogNode.options?.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer : dialogNode?.correctAnswer}</strong></Alert>
               )}
-              {hasOptions && renderOptionsReview(dialogNode.options, dialogNode.correctAnswer, reviewData?.answer)}
+              {hasOptions && (
+                <OptionGrid
+                  options={dialogNode.options}
+                  correctAnswer={dialogNode.correctAnswer}
+                  chosenAnswer={reviewData?.answer}
+                  readOnly
+                />
+              )}
               {dialogNode?.hint && <Alert severity="info" icon={<LightbulbIcon />}><strong>Gợi ý:</strong> {dialogNode.hint}</Alert>}
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px:3, py:2, gap:1 }}>
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           {isAnswerMode && answerResult === null && (
             <>
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>Xem sơ đồ</Button>
-              <Button variant="contained" onClick={handleAnswer} disabled={!answer.trim() || actionBusy} size="large" sx={{ flex:1 }} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>{answerPending ? 'Đang xử lý' : 'Trả lời'}</Button>
+              <Button
+                variant="contained"
+                onClick={handleAnswer}
+                disabled={!answer.trim() || actionBusy}
+                size="large"
+                sx={{ flex: 1 }}
+                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
+              >
+                {answerPending ? 'Đang xử lý' : 'Trả lời'}
+              </Button>
             </>
           )}
           {isAnswerMode && answerResult !== null && (
             <>
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>Xem sơ đồ</Button>
               {dfsQueue.length <= 1 ? (
-                <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex: 1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
                   Nộp bài
                 </Button>
               ) : (
-                <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex: 1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
                   Câu tiếp theo
                 </Button>
               )}
@@ -693,11 +747,11 @@ export default function ExamMindMap() {
             <>
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>Xem sơ đồ</Button>
               {dfsQueue.length <= 1 ? (
-                <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                <Button variant="contained" color="success" onClick={() => completeAttempt(scoreDisplay)} size="large" sx={{ flex: 1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
                   Nộp bài
                 </Button>
               ) : (
-                <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
+                <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex: 1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>
                   Câu tiếp theo
                 </Button>
               )}
@@ -710,32 +764,32 @@ export default function ExamMindMap() {
       </Dialog>
 
       {/* Dialog kết quả */}
-      <Dialog open={finished} maxWidth="xs" fullWidth PaperProps={{ sx: { position:'relative' } }}>
-        <DialogTitle sx={{ textAlign:'center', pt:3 }}>
-          <EmojiEventsIcon sx={{ fontSize:56, color:'#f9a825' }} />
-          <Typography variant="h5" fontWeight="bold" sx={{ mt:1 }}>Kết quả bài thi</Typography>
+      <Dialog open={finished} maxWidth="xs" fullWidth PaperProps={{ sx: { position: 'relative' } }}>
+        <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
+          <EmojiEventsIcon sx={{ fontSize: 56, color: '#f9a825' }} />
+          <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>Kết quả bài thi</Typography>
         </DialogTitle>
         <DialogContent>
           {submitting ? (
-            <Box sx={{ textAlign:'center', py:3 }}><CircularProgress /><Typography sx={{ mt:2 }} color="text.secondary">Đang lưu kết quả...</Typography></Box>
+            <Box sx={{ textAlign: 'center', py: 3 }}><CircularProgress /><Typography sx={{ mt: 2 }} color="text.secondary">Đang lưu kết quả...</Typography></Box>
           ) : submitResult ? (
-            <Box sx={{ textAlign:'center', py:1 }}>
+            <Box sx={{ textAlign: 'center', py: 1 }}>
               <Typography variant="h2" color="primary" fontWeight="bold">{submitResult.attempt.score}</Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>Điểm lần này</Typography>
-              <Box sx={{ mt:2, p:2, bgcolor:'#f3e5f5', borderRadius:2 }}>
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#f3e5f5', borderRadius: 2 }}>
                 <Typography variant="h4" color="secondary" fontWeight="bold">{submitResult.avgScore}</Typography>
                 <Typography variant="body2" color="text.secondary">Điểm trung bình ({submitResult.attemptCount} lần làm)</Typography>
               </Box>
             </Box>
           ) : null}
         </DialogContent>
-        <DialogActions sx={{ justifyContent:'center', gap:2, pb:3 }}>
+        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/student')} disabled={submitting || resetting || !submitResult}>Về trang chủ</Button>
           <Button variant="contained" startIcon={resetting ? undefined : <ReplayIcon />} endIcon={resetting ? <CircularProgress size={20} /> : undefined} onClick={handleReset} disabled={submitting || resetting || !submitResult}>Làm lại từ đầu</Button>
         </DialogActions>
         {submitting && (
-          <Box sx={{ position:'absolute', top:0, left:0, right:0, bottom:0, display:'flex', alignItems:'center', justifyContent:'center', bgcolor:'rgba(255,255,255,0.85)', zIndex:10, borderRadius:'4px' }}>
-            <Box sx={{ textAlign:'center' }}><CircularProgress size={50} /><Typography sx={{ mt:2 }} color="text.secondary">Đang lưu kết quả...</Typography></Box>
+          <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.85)', zIndex: 10, borderRadius: '4px' }}>
+            <Box sx={{ textAlign: 'center' }}><CircularProgress size={50} /><Typography sx={{ mt: 2 }} color="text.secondary">Đang lưu kết quả...</Typography></Box>
           </Box>
         )}
       </Dialog>
