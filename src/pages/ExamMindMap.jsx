@@ -250,6 +250,7 @@ export default function ExamMindMap() {
   const blockRef = useRef(false);
 
   const [finished, setFinished] = useState(false);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [rfInstance, setRfInstance] = useState(null);
@@ -507,6 +508,7 @@ export default function ExamMindMap() {
         });
         setSubmitResult(data);
         setFinished(true);
+        setResultDialogOpen(true);
       }
     } catch (err) {
       console.error(err);
@@ -527,6 +529,7 @@ export default function ExamMindMap() {
     } catch (err) {
       console.error('Reset error:', err);
       setFinished(false);
+      setResultDialogOpen(false);
       setSubmitResult(null);
     } finally {
       setResetting(false);
@@ -640,6 +643,18 @@ export default function ExamMindMap() {
             Nộp bài
           </Button>
         )}
+        {finished && (
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ReplayIcon />}
+          onClick={handleReset}
+          disabled={actionBusy}
+          sx={{ textTransform: 'none', ml: 1 }}
+        >
+          Làm lại
+        </Button>
+      )}
       </Paper>
 
       <LinearProgress
@@ -877,8 +892,7 @@ export default function ExamMindMap() {
           {/* Chế độ xem lại */}
           {isReviewMode && (
             <Box>
-              <Divider sx={{ mb: 2 }} />
-           
+          
               {hasOptions && (
                 <OptionGrid
                   options={dialogNode.options}
@@ -888,6 +902,7 @@ export default function ExamMindMap() {
                   sx ={{ mb: 2 }}
                 />
               )}
+                  <Divider sx={{ mb: 2 }} />
                  {reviewData?.isCorrect ? (
                 <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1.5 }}>
                   <strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em>
@@ -1002,8 +1017,14 @@ export default function ExamMindMap() {
       </Dialog>
 
       {/* Dialog kết quả – responsive */}
-      <Dialog open={finished} maxWidth="xs" fullWidth PaperProps={{ sx: { position: 'relative' } }}>
-        <DialogTitle sx={{ textAlign: 'center', pt: 3, fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
+      <Dialog open={resultDialogOpen} onClose={() => setResultDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { position: 'relative' } }}>
+        <DialogTitle sx={{ textAlign: 'center', pt: 3, fontSize: { xs: '1.2rem', sm: '1.5rem' }, position: 'relative' }}>
+          <IconButton
+            onClick={() => setResultDialogOpen(false)}
+            sx={{ position: 'absolute', top: 8, right: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
           <EmojiEventsIcon sx={{ fontSize: { xs: 48, sm: 56 }, color: '#f9a825' }} />
           <Typography variant="h5" fontWeight="bold" sx={{ mt: 1, fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
             Kết quả bài thi
