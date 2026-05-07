@@ -532,7 +532,17 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
-        {/* Nút Nộp bài đã bị xoá */}
+        <Button
+          size="small"
+          variant="contained"
+          color="success"
+          onClick={() => setFinished(true)}
+          disabled={finished}
+          endIcon={submitting ? <CircularProgress size={16} /> : undefined}
+          sx={{ textTransform: 'none' }}
+        >
+          Nộp bài
+        </Button>
       </Paper>
 
       <LinearProgress
