@@ -465,15 +465,17 @@ export default function ExamMindMap() {
     }
   }, [dfsQueue, answerResult, actionBusy, applyNodeStatus]);
 
-  const currentQueueNodeId = dfsQueue[0] ?? null;
-  const answeredCount = totalNodes - dfsQueue.length;
-  const progress = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
 
   const completedCount = useMemo(
     () => Object.values(nodeStatuses).filter(s => s === 'correct' || s === 'incorrect').length,
     [nodeStatuses]
   );
   const allAnswered = totalNodes > 0 && completedCount === totalNodes;
+
+
+  const currentQueueNodeId = dfsQueue[0] ?? null;
+  const answeredCount = totalNodes - dfsQueue.length;
+  const progress = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
 
   const onNodeClick = useCallback(
     (_evt, node) => {
