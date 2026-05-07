@@ -210,6 +210,8 @@ export default function ExamMindMap() {
   const [rfInstance, setRfInstance] = useState(null);
   const actionBusy = answerPending || submitting || resetting;
 
+  const currentQueueNodeId = dfsQueue[0] ?? null;
+
   // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc)
   const displayNodes = useMemo(() =>
     rfNodes.map((n) => ({
@@ -341,7 +343,7 @@ export default function ExamMindMap() {
         setAnswerResult(null);
       }
     }
-  }, [nodeStatuses, currentQueueNodeId, answerResult, handleContinue]);
+  }, [nodeStatuses, dfsQueue, answerResult, handleContinue]);
 
   const closeDialog = () => {
     setDialogNodeId(null);
@@ -468,7 +470,6 @@ export default function ExamMindMap() {
     }
   };
 
-  const currentQueueNodeId = dfsQueue[0] ?? null;
   const answeredCount = totalNodes - dfsQueue.length;
   const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
 
