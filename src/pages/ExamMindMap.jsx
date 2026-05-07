@@ -560,6 +560,23 @@ export default function ExamMindMap() {
     }
   }, [focusCurrentRequested, dialogNodeId, handleGoToCurrent]);
 
+  const handleResetLayout = useCallback(() => {
+  if (!exam || !exam.nodes || exam.nodes.length === 0) return;
+  const { root } = buildTree(exam.nodes);
+  if (!root) return;
+  const positions = calcPositions(root);
+  setRfNodes((prevNodes) =>
+    prevNodes.map((node) => {
+      const pos = positions[parseInt(node.id)];
+      return pos ? { ...node, position: pos } : node;
+    })
+  );
+  // Sau khi cập nhật vị trí, fit view để nhìn toàn cảnh
+  setTimeout(() => {
+    rfInstance?.fitView({ padding: 0.3, duration: 400 });
+  }, 0);
+}, [exam, setRfNodes, rfInstance]);
+
   useEffect(() => {
     if (answerResult !== null && dfsQueue.length > 1) {
       const nextNodeId = dfsQueue[1];
@@ -753,15 +770,15 @@ export default function ExamMindMap() {
             </Button>
           )}
 
-          <Tooltip title="Đặt lại mặc định" placement="left">
-            <IconButton
-              onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
-              sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#f5f5f5' } }}
-              size="small"
-            >
-              <ZoomOutMapIcon color="action" />
-            </IconButton>
-          </Tooltip>
+          <Tooltip title="Đặt lại vị trí mặc định" placement="left">
+              <IconButton
+                onClick={handleResetLayout}
+                sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#f5f5f5' } }}
+                size="small"
+              >
+                <ReplayIcon color="action" />
+              </IconButton>
+            </Tooltip>
           {!finished && currentQueueNodeId && (
             <Tooltip title="Đến câu gần nhất" placement="left">
               <IconButton
