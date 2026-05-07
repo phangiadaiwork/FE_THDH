@@ -550,8 +550,8 @@ export default function ExamMindMap() {
             variant="contained"
             color="success"
             onClick={() => completeAttempt(scoreDisplay)}
-            disabled={finished}
-            endIcon={submitting ? <CircularProgress size={16} /> : undefined}
+            disabled={finished || submitting || resetting}
+            endIcon={submitting || resetting ? <CircularProgress size={16} /> : undefined}
             sx={{ textTransform: 'none' }}
           >
             Nộp bài
