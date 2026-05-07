@@ -793,11 +793,6 @@ export default function ExamMindMap() {
                 sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
               />
             )}
-            {isMobile && (
-              <IconButton size="small" onClick={handleCloseAndFocus} sx={{ ml: 0.5 }}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            )}
           </Box>
         </DialogTitle>
         <DialogContent dividers sx={{ px: { xs: 1.5, sm: 3 }, py: 2 }}>
