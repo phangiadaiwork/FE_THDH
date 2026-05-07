@@ -688,8 +688,6 @@ export default function ExamMindMap() {
           nodesConnectable={false}
           elementsSelectable={false}
           panOnScroll
-          minZoom={0.3}
-          maxZoom={2}
         >
           <Controls showInteractive={false} />
           <Background color="#e0e0e0" gap={20} />
