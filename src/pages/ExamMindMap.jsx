@@ -557,7 +557,7 @@ export default function ExamMindMap() {
       });
     }
   }, [nodeStatuses, rfNodes]);
-  
+
   useEffect(() => {
     if (focusCurrentRequested && dialogNodeId === null) {
       handleGoToCurrent();
@@ -699,6 +699,7 @@ export default function ExamMindMap() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          
           nodeTypes={nodeTypes}
           onInit={(instance) => {
             rfInstanceRef.current = instance;
@@ -708,6 +709,7 @@ export default function ExamMindMap() {
           fitViewOptions={{ padding: 0.3 }}
           nodesDraggable={true}
           nodesConnectable={false}
+          nodesFocusable={false}  
           elementsSelectable={false}
           panOnScroll
         >
