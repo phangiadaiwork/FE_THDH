@@ -338,17 +338,17 @@ export default function ExamMindMap() {
     setDfsQueue(remaining);
     setAnswer('');
     setAnswerResult(null);
+    setDialogNodeId(null); // Đóng dialog, quay về sơ đồ
 
     if (remaining.length > 0) {
-      const nextId = remaining[0];
-      setNodeStatuses((prev) => ({ ...prev, [nextId]: 'current' }));
-      setDialogNodeId(nextId); // Tự động mở dialog câu tiếp
+      // Mở khóa node kế tiếp trên sơ đồ (FAB "Mở câu hỏi" sẽ hiện)
+      setNodeStatuses((prev) => ({ ...prev, [remaining[0]]: 'current' }));
     } else {
-      setDialogNodeId(null);
       setFinished(true);
       completeAttempt(scoreRef.current);
     }
   };
+
 
   // ── Hoàn thành bài ────────────────────────────────────────────────────────
   const completeAttempt = async (finalScore) => {
@@ -455,17 +455,22 @@ export default function ExamMindMap() {
             variant="contained"
             color="warning"
             startIcon={<PlayArrowIcon />}
-            onClick={() => { setAnswer(''); setAnswerResult(null); setDialogNodeId(currentQueueNodeId); }}
+            onClick={() => {
+              setAnswer('');
+              setAnswerResult(null);
+              setDialogNodeId(currentQueueNodeId);
+            }}
             sx={{
               position: 'absolute',
               bottom: 24,
               right: 24,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
               zIndex: 10,
               borderRadius: 3,
+              maxWidth: 260,
             }}
           >
-            Mở câu hỏi hiện tại
+            ▶ {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
           </Button>
         )}
       </Box>
@@ -666,7 +671,23 @@ export default function ExamMindMap() {
               </Button>
             </>
           )}
-          {isReviewMode && (
+          {isReviewMode && dialogNodeId === currentQueueNodeId && (
+            <>
+              <Button variant="outlined" onClick={closeDialog}>
+                Xem sơ đồ
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleContinue}
+                size="large"
+                sx={{ flex: 1 }}
+                color={dfsQueue.length > 1 ? 'primary' : 'success'}
+              >
+                {dfsQueue.length > 1 ? 'Câu tiếp theo →' : 'Nộp bài'}
+              </Button>
+            </>
+          )}
+          {isReviewMode && dialogNodeId !== currentQueueNodeId && (
             <Button variant="outlined" onClick={closeDialog} fullWidth>
               Xem sơ đồ
             </Button>
