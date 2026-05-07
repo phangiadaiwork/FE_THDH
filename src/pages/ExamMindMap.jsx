@@ -536,7 +536,7 @@ export default function ExamMindMap() {
           size="small"
           variant="contained"
           color="success"
-          onClick={() => setFinished(true)}
+          onClick={() => completeAttempt(scoreDisplay)}
           disabled={finished}
           endIcon={submitting ? <CircularProgress size={16} /> : undefined}
           sx={{ textTransform: 'none' }}
