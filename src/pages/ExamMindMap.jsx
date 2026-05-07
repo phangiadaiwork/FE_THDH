@@ -878,7 +878,16 @@ export default function ExamMindMap() {
           {isReviewMode && (
             <Box>
               <Divider sx={{ mb: 2 }} />
-              {reviewData?.isCorrect ? (
+           
+              {hasOptions && (
+                <OptionGrid
+                  options={dialogNode.options}
+                  correctAnswer={dialogNode.correctAnswer}
+                  chosenAnswer={reviewData?.answer}
+                  readOnly
+                />
+              )}
+                 {reviewData?.isCorrect ? (
                 <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 1.5 }}>
                   <strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em>
                 </Alert>
@@ -894,14 +903,6 @@ export default function ExamMindMap() {
                       : dialogNode?.correctAnswer}
                   </strong>
                 </Alert>
-              )}
-              {hasOptions && (
-                <OptionGrid
-                  options={dialogNode.options}
-                  correctAnswer={dialogNode.correctAnswer}
-                  chosenAnswer={reviewData?.answer}
-                  readOnly
-                />
               )}
               {dialogNode?.hint && (
                 <Alert severity="info" icon={<LightbulbIcon />}>
