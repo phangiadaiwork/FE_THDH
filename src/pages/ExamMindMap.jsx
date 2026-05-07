@@ -362,13 +362,8 @@ export default function ExamMindMap() {
     const correct = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
     const currentNodeId = dialogNodeId;
 
-    if (correct) {
-      scoreRef.current += dialogNode.points;
-      setScoreDisplay(scoreRef.current);
-    }
-    applyNodeStatus(currentNodeId, correct ? 'correct' : 'incorrect');
+    // Lưu answer nhưng KHÔNG hiện kết quả ngay
     setAnswer(ans.trim());
-    setAnswerResult(correct ? 'correct' : 'incorrect');
     setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: ans.trim(), isCorrect: correct } }));
 
     try {
@@ -380,8 +375,18 @@ export default function ExamMindMap() {
           isCorrect: correct,
         });
       }
+      
+      // Chỉ update kết quả SAU KHI API success
+      if (correct) {
+        scoreRef.current += dialogNode.points;
+        setScoreDisplay(scoreRef.current);
+      }
+      applyNodeStatus(currentNodeId, correct ? 'correct' : 'incorrect');
+      setAnswerResult(correct ? 'correct' : 'incorrect');
     } catch (error) {
       console.error(error);
+      // Reset nếu API fail
+      blockRef.current = false;
     } finally {
       setAnswerPending(false);
       blockRef.current = false;
