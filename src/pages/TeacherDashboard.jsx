@@ -94,8 +94,8 @@ export default function TeacherDashboard() {
       .split('\n')
       .filter(Boolean)
       .map((line) => {
-        const [username, password, fullName, className, school] = line.split(',').map((part) => part.trim());
-        return { username, password, fullName, className, school };
+        const [username, password, fullName, className, school, academicYearName] = line.split(',').map((part) => part.trim());
+        return { username, password, fullName, className, school, academicYearName };
       });
 
     setBulkLoading(true);
@@ -149,7 +149,7 @@ export default function TeacherDashboard() {
   const openVisibilityDialog = (lesson) => {
     setVisLesson(lesson);
     setVisPublic(lesson.isPublic);
-    setVisClasses(lesson.assignedClasses?.map((item) => item.name) || []);
+    setVisClasses(lesson.assignedClasses?.map((item) => item.id) || []);
   };
 
   const saveVisibility = async () => {
@@ -305,7 +305,7 @@ export default function TeacherDashboard() {
         <DialogTitle>Tạo tài khoản học sinh bằng CSV</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Mỗi dòng theo mẫu: username,password,họ tên,lớp,trường
+            Mỗi dòng theo mẫu: username,password,họ tên,lớp,trường,năm học
           </Typography>
           <TextField
             fullWidth
@@ -313,7 +313,7 @@ export default function TeacherDashboard() {
             minRows={10}
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
-            placeholder="hs12a1,123456,Nguyễn Văn A,12A1,THPT Lê Lợi"
+            placeholder="hs12a1,123456,Nguyễn Văn A,12A1,THPT Lê Lợi,2025-2026"
           />
         </DialogContent>
         <DialogActions>
@@ -343,17 +343,17 @@ export default function TeacherDashboard() {
                   key={studentClass.id}
                   control={
                     <Checkbox
-                      checked={visClasses.includes(studentClass.name)}
+                      checked={visClasses.includes(studentClass.id)}
                       onChange={() =>
                         setVisClasses((prev) =>
-                          prev.includes(studentClass.name)
-                            ? prev.filter((item) => item !== studentClass.name)
-                            : [...prev, studentClass.name]
+                          prev.includes(studentClass.id)
+                            ? prev.filter((item) => item !== studentClass.id)
+                            : [...prev, studentClass.id]
                         )
                       }
                     />
                   }
-                  label={`${studentClass.name} • ${studentClass.school || 'Chưa gán trường'}`}
+                  label={`${studentClass.name} • ${studentClass.academicYearName} • ${studentClass.school || 'Chưa gán trường'}`}
                 />
               ))}
             </Stack>

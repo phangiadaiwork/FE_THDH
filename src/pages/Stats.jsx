@@ -73,7 +73,7 @@ export default function Stats() {
   }, []);
 
   const filteredRows = useMemo(
-    () => rows.filter((row) => selectedClass === 'ALL' || row.className === selectedClass),
+    () => rows.filter((row) => selectedClass === 'ALL' || row.classId === selectedClass),
     [rows, selectedClass]
   );
 
@@ -101,12 +101,16 @@ export default function Stats() {
   const classChartData = useMemo(
     () =>
       classes.map((studentClass) => {
-        const classRows = rows.filter((row) => row.className === studentClass.name);
+        const classRows = rows.filter(
+          (row) =>
+            row.className === studentClass.name &&
+            row.academicYearName === studentClass.academicYearName
+        );
         const values = classRows.flatMap((row) =>
           row.lessonStats.map((item) => item.avgScore).filter((value) => value !== null && value !== undefined)
         );
         return {
-          name: studentClass.name,
+          name: `${studentClass.name} (${studentClass.academicYearName})`,
           avgScore: values.length > 0
             ? parseFloat((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2))
             : 0,
@@ -152,8 +156,8 @@ export default function Stats() {
                     <Select value={selectedClass} label="Lọc theo lớp" onChange={(e) => setSelectedClass(e.target.value)}>
                       <MenuItem value="ALL">Tất cả lớp</MenuItem>
                       {classes.map((studentClass) => (
-                        <MenuItem key={studentClass.id} value={studentClass.name}>
-                          {studentClass.name}
+                        <MenuItem key={studentClass.id} value={studentClass.id}>
+                          {studentClass.name} - {studentClass.academicYearName}
                         </MenuItem>
                       ))}
                     </Select>
@@ -196,7 +200,7 @@ export default function Stats() {
                     {filteredRows.map((row) => (
                       <TableRow key={row.studentId} hover>
                         <TableCell>{row.fullName}</TableCell>
-                        <TableCell>{row.className}</TableCell>
+                        <TableCell>{row.className} ({row.academicYearName})</TableCell>
                         {row.lessonStats
                           .filter((lessonStat) => selectedLessonId === 'ALL' || lessonStat.examId === selectedLessonId)
                           .map((lessonStat) => (

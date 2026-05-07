@@ -46,7 +46,7 @@ export default function StudentManagement() {
 
   // Edit dialog
   const [editStudent, setEditStudent] = useState(null);
-  const [editForm, setEditForm] = useState({ username: '', fullName: '', className: '', school: '' });
+  const [editForm, setEditForm] = useState({ username: '', fullName: '', className: '', school: '', academicYearName: '' });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -99,6 +99,7 @@ export default function StudentManagement() {
       fullName: student.fullName,
       className: student.className || '',
       school: student.school || '',
+      academicYearName: student.academicYearName || '',
     });
     setEditError('');
   };
@@ -185,7 +186,7 @@ export default function StudentManagement() {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  {['#', 'Username', 'Họ và tên', 'Lớp', 'Trường', 'Ngày tạo', 'Thao tác'].map((h) => (
+                  {['#', 'Username', 'Họ và tên', 'Lớp', 'Năm học', 'Trường', 'Ngày tạo', 'Thao tác'].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 'bold', bgcolor: '#1565c0', color: 'white' }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -193,7 +194,7 @@ export default function StudentManagement() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">Không có dữ liệu</Typography>
                     </TableCell>
                   </TableRow>
@@ -206,6 +207,7 @@ export default function StudentManagement() {
                       <TableCell>
                         <Chip label={student.className || '—'} size="small" variant="outlined" />
                       </TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>{student.academicYearName || '—'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: 13 }}>{student.school || '—'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: 12, whiteSpace: 'nowrap' }}>
                         {new Date(student.createdAt).toLocaleDateString('vi-VN')}
@@ -248,6 +250,7 @@ export default function StudentManagement() {
           <TextField label="Username" value={editForm.username} onChange={(e) => setEditForm((p) => ({ ...p, username: e.target.value }))} size="small" fullWidth />
           <TextField label="Họ và tên" value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} size="small" fullWidth />
           <TextField label="Lớp" value={editForm.className} onChange={(e) => setEditForm((p) => ({ ...p, className: e.target.value }))} size="small" fullWidth />
+          <TextField label="Năm học" value={editForm.academicYearName} onChange={(e) => setEditForm((p) => ({ ...p, academicYearName: e.target.value }))} size="small" fullWidth helperText="Ví dụ: 2025-2026" />
           <TextField label="Trường" value={editForm.school} onChange={(e) => setEditForm((p) => ({ ...p, school: e.target.value }))} size="small" fullWidth />
           {editError && <Alert severity="error">{editError}</Alert>}
         </DialogContent>
