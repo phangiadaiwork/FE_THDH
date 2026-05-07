@@ -139,6 +139,9 @@ export default function ExamMindMap() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // React Flow instance ref
+  const rfInstanceRef = useRef(null);
+
   const [exam, setExam] = useState(null);
   const [nodeMap, setNodeMap] = useState({});
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
@@ -439,12 +442,12 @@ export default function ExamMindMap() {
   const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
 
   const handleGoToCurrent = useCallback(() => {
-    if (!rfInstance || !currentQueueNodeId) return;
+    if (!rfInstanceRef.current || !currentQueueNodeId) return;
     const node = rfNodes.find((n) => parseInt(n.id) === currentQueueNodeId);
     if (node) {
-      rfInstance.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
+      rfInstanceRef.current.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
     }
-  }, [rfInstance, currentQueueNodeId, rfNodes]); // rfNodes dùng để lấy position (không phải displayNodes)
+  }, [currentQueueNodeId, rfNodes]);
 
   useEffect(() => {
     if (focusCurrentRequested && dialogNodeId === null) {
@@ -463,6 +466,18 @@ export default function ExamMindMap() {
       }));
     }
   }, [answerResult, dfsQueue]);
+
+  // ── Auto-close dialog & focus next node khi trả lời xong ───────────────────
+  useEffect(() => {
+    if (answerResult !== null && isAnswerMode && dfsQueue.length > 1) {
+      // Không auto-close dialog, chỉ focus node tiếp theo
+      const nextNodeId = dfsQueue[1];
+      const nextNode = rfNodes.find((n) => parseInt(n.id) === nextNodeId);
+      if (rfInstanceRef.current && nextNode) {
+        rfInstanceRef.current.setCenter(nextNode.position.x + 90, nextNode.position.y + 40, { zoom: 1.5, duration: 450 });
+      }
+    }
+  }, [answerResult, isAnswerMode, dfsQueue, rfNodes]);
 
   const handleCloseAndFocus = useCallback(() => {
     setFocusCurrentRequested(true);
@@ -498,6 +513,21 @@ export default function ExamMindMap() {
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
         <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
           <span>
+            <Button
+              size="small"
+              variant="contained"
+              color="success"
+              onClick={completeAttempt}
+              disabled={actionBusy || dfsQueue.length > 0 || finished}
+              endIcon={submitting ? <CircularProgress size={16} /> : undefined}
+              sx={{ textTransform: 'none' }}
+            >
+              Nộp bài
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
+          <span>
             <IconButton
               size="small"
               onClick={handleReset}
@@ -525,7 +555,7 @@ export default function ExamMindMap() {
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
-          onInit={setRfInstance}
+          onInit={(instance) => { rfInstanceRef.current = instance; }}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           nodesDraggable={true}
@@ -796,11 +826,10 @@ export default function ExamMindMap() {
                 onClick={handleContinue}
                 size="large"
                 sx={{ flex: 1 }}
-                color={dfsQueue.length > 1 ? 'primary' : 'success'}
-                disabled={actionBusy}
+                disabled={actionBusy || dfsQueue.length <= 1}
                 endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
               >
-                {dfsQueue.length > 1 ? 'Câu tiếp theo' : 'Nộp bài'}
+                Câu tiếp theo
               </Button>
             </>
           )}
@@ -814,11 +843,10 @@ export default function ExamMindMap() {
                 onClick={handleContinue}
                 size="large"
                 sx={{ flex: 1 }}
-                color={dfsQueue.length > 1 ? 'primary' : 'success'}
-                disabled={actionBusy}
+                disabled={actionBusy || dfsQueue.length <= 1}
                 endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
               >
-                {dfsQueue.length > 1 ? 'Câu tiếp theo' : 'Nộp bài'}
+                Câu tiếp theo
               </Button>
             </>
           )}
