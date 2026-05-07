@@ -24,6 +24,10 @@ import {
   CircularProgress,
   LinearProgress,
   Paper,
+  FormControl,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
   Tooltip,
   IconButton,
   Divider,
@@ -155,12 +159,15 @@ export default function ExamMindMap() {
   const [dialogNodeId, setDialogNodeId] = useState(null);
   const [answer, setAnswer] = useState('');
   const [answerResult, setAnswerResult] = useState(null);
+  const [answerPending, setAnswerPending] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const blockRef = useRef(false); // chống double-click / double-submit
 
   const [finished, setFinished] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [rfInstance, setRfInstance] = useState(null);
+  const actionBusy = answerPending || submitting || resetting;
 
   // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc)
   // Phải khai báo SAU tất cả state để tránh TDZ (Temporal Dead Zone)
@@ -308,9 +315,10 @@ export default function ExamMindMap() {
   }, []);
 
   // ── Core submit: dùng chung cho text input và option click ──────────────
-  const submitAnswer = useCallback((ans) => {
-    if (!dialogNode || !ans.trim() || !isAnswerMode || blockRef.current) return;
+  const submitAnswer = useCallback(async (ans) => {
+    if (!dialogNode || !ans.trim() || !isAnswerMode || blockRef.current || answerPending) return;
     blockRef.current = true;
+    setAnswerPending(true);
 
     const correct = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
     const currentNodeId = dialogNodeId;
@@ -324,24 +332,31 @@ export default function ExamMindMap() {
     setAnswerResult(correct ? 'correct' : 'incorrect');
     setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: ans.trim(), isCorrect: correct } }));
 
-    if (attemptIdRef.current) {
-      api.post('/api/attempts/answer', {
-        attemptId: attemptIdRef.current,
-        nodeId: currentNodeId,
-        answer: ans.trim(),
-        isCorrect: correct,
-      }).catch(console.error);
+    try {
+      if (attemptIdRef.current) {
+        await api.post('/api/attempts/answer', {
+          attemptId: attemptIdRef.current,
+          nodeId: currentNodeId,
+          answer: ans.trim(),
+          isCorrect: correct,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setAnswerPending(false);
+      blockRef.current = false;
     }
-  }, [dialogNode, dialogNodeId, isAnswerMode, applyNodeStatus]);
+  }, [dialogNode, dialogNodeId, isAnswerMode, applyNodeStatus, answerPending]);
 
   const handleAnswer = () => submitAnswer(answer);
 
-  // Trắc nghiệm: click option = submit luôn, không cần bước "Trả lời" riêng
-  const handleSelectOption = (letter) => submitAnswer(letter);
+  // Trắc nghiệm: chọn radio rồi bấm "Trả lời"
+  const handleSelectOption = (letter) => setAnswer(letter);
 
   // ── Tiếp tục sang node kế tiếp ────────────────────────────────────────────
   const handleContinue = () => {
-    if (blockRef.current && answerResult === null) return; // guard khi chưa trả lời
+    if (actionBusy || (blockRef.current && answerResult === null)) return; // guard khi chưa trả lời / đang bận
     blockRef.current = false; // reset cho câu tiếp theo
 
     const remaining = dfsQueue.slice(1);
@@ -382,12 +397,15 @@ export default function ExamMindMap() {
   // ── Làm lại ───────────────────────────────────────────────────────────────
   const handleReset = async () => {
     if (!exam) return;
+    setResetting(true);
     try {
       const { data } = await api.post('/api/attempts/start', { examId: parseInt(id) });
       attemptIdRef.current = data.attemptId;
       initFresh(exam.nodes);
     } catch (err) {
       console.error(err);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -402,6 +420,11 @@ export default function ExamMindMap() {
       rfInstance.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
     }
   }, [rfInstance, currentQueueNodeId, rfNodes]); // rfNodes dùng để lấy position (không phải displayNodes)
+
+  const handleCloseAndFocus = useCallback(() => {
+    closeDialog();
+    handleGoToCurrent();
+  }, [handleGoToCurrent]);
 
   if (loading) {
     return (
@@ -435,7 +458,7 @@ export default function ExamMindMap() {
             <IconButton
               size="small"
               onClick={handleReset}
-              disabled={!finished && dfsQueue.length > 0}
+              disabled={actionBusy || (!finished && dfsQueue.length > 0)}
               color="default"
             >
               <ReplayIcon fontSize="small" />
@@ -563,30 +586,45 @@ export default function ExamMindMap() {
           {/* ── Chế độ trả lời (node hiện tại) ── */}
           {isAnswerMode && answerResult === null && (
             hasOptions ? (
-              // Trắc nghiệm: click option = submit ngay (1 bước)
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {dialogNode.options.map((opt, i) => (
-                  <Button
-                    key={i}
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => handleSelectOption(opt.charAt(0))}
-                    sx={{
-                      justifyContent: 'flex-start',
-                      textTransform: 'none',
-                      fontSize: '0.95rem',
-                      py: 1.2,
-                      px: 2,
-                      borderColor: '#ccc',
-                      color: 'text.primary',
-                      '&:hover': { bgcolor: '#fff8e1', borderColor: '#f9a825', transform: 'translateX(3px)' },
-                      transition: 'all 0.12s ease',
-                    }}
-                  >
-                    {opt}
-                  </Button>
-                ))}
-              </Box>
+              <FormControl fullWidth>
+                <RadioGroup
+                  value={answer}
+                  onChange={(e) => handleSelectOption(e.target.value)}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 1,
+                  }}
+                >
+                  {dialogNode.options.map((opt, i) => {
+                    const letter = opt.charAt(0);
+                    const checked = answer === letter;
+                    return (
+                      <FormControlLabel
+                        key={i}
+                        value={letter}
+                        control={<Radio />}
+                        disabled={actionBusy}
+                        label={opt}
+                        sx={{
+                          m: 0,
+                          px: 1.5,
+                          py: 0.75,
+                          border: '1px solid',
+                          borderColor: checked ? '#f9a825' : '#e0e0e0',
+                          borderRadius: 2,
+                          bgcolor: checked ? '#fff8e1' : 'white',
+                          transition: 'all 0.18s ease',
+                          '&:hover': {
+                            bgcolor: checked ? '#fff3cd' : '#fafafa',
+                            borderColor: '#f9a825',
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </RadioGroup>
+              </FormControl>
             ) : (
               <TextField
                 fullWidth
@@ -597,6 +635,7 @@ export default function ExamMindMap() {
                 autoFocus
                 key={dialogNodeId}
                 placeholder="Nhập câu trả lời rồi nhấn Enter..."
+                disabled={actionBusy}
               />
             )
           )}
@@ -688,26 +727,23 @@ export default function ExamMindMap() {
         <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           {isAnswerMode && answerResult === null && (
             <>
-              <Button variant="outlined" onClick={closeDialog}>
+              <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
                 Xem sơ đồ
               </Button>
-              {/* Chỉ hiện nút Trả lời cho câu tự luận; trắc nghiệm click option là submit luôn */}
-              {!hasOptions && (
-                <Button
-                  variant="contained"
-                  onClick={handleAnswer}
-                  disabled={!answer.trim()}
-                  size="large"
-                  sx={{ flex: 1 }}
-                >
-                  Trả lời
-                </Button>
-              )}
+              <Button
+                variant="contained"
+                onClick={handleAnswer}
+                disabled={!answer.trim() || actionBusy}
+                size="large"
+                sx={{ flex: 1 }}
+              >
+                {answerPending ? 'Đang xử lý...' : 'Trả lời'}
+              </Button>
             </>
           )}
           {isAnswerMode && answerResult !== null && (
             <>
-              <Button variant="outlined" onClick={closeDialog}>
+              <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
                 Xem sơ đồ
               </Button>
               <Button
@@ -716,6 +752,7 @@ export default function ExamMindMap() {
                 size="large"
                 sx={{ flex: 1 }}
                 color={dfsQueue.length > 1 ? 'primary' : 'success'}
+                disabled={actionBusy}
               >
                 {dfsQueue.length > 1 ? 'Câu tiếp theo →' : 'Nộp bài'}
               </Button>
@@ -723,7 +760,7 @@ export default function ExamMindMap() {
           )}
           {isReviewMode && dialogNodeId === currentQueueNodeId && (
             <>
-              <Button variant="outlined" onClick={closeDialog}>
+              <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
                 Xem sơ đồ
               </Button>
               <Button
@@ -732,13 +769,14 @@ export default function ExamMindMap() {
                 size="large"
                 sx={{ flex: 1 }}
                 color={dfsQueue.length > 1 ? 'primary' : 'success'}
+                disabled={actionBusy}
               >
                 {dfsQueue.length > 1 ? 'Câu tiếp theo →' : 'Nộp bài'}
               </Button>
             </>
           )}
           {isReviewMode && dialogNodeId !== currentQueueNodeId && (
-            <Button variant="outlined" onClick={closeDialog} fullWidth>
+            <Button variant="outlined" onClick={handleCloseAndFocus} fullWidth disabled={actionBusy}>
               Xem sơ đồ
             </Button>
           )}
