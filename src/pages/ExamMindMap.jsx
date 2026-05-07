@@ -321,12 +321,11 @@ export default function ExamMindMap() {
     init();
   }, [id, initFresh, restoreProgress]);
 
-  // ── Helpers nằm sau fetch để có thể dùng state/ref ──────────────────────
+  // ── Core submit: dùng chung cho text input và option click ──────────────
   const applyNodeStatus = useCallback((nodeId, status) => {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
   }, []);
 
-  // ── Core submit: dùng chung cho text input và option click ──────────────
   const submitAnswer = useCallback(async (ans) => {
     if (!dialogNode || !ans.trim() || !isAnswerMode || blockRef.current || answerPending) return;
     blockRef.current = true;
