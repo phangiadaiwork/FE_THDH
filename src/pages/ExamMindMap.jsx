@@ -479,6 +479,13 @@ export default function ExamMindMap() {
     }
   }, [answerResult, isAnswerMode, dfsQueue, rfNodes]);
 
+  // ── Auto-submit khi finished = true ──────────────────────────────────────
+  useEffect(() => {
+    if (finished && !submitting && !submitResult) {
+      completeAttempt(scoreDisplay);
+    }
+  }, [finished, submitting, submitResult, scoreDisplay]);
+
   const handleCloseAndFocus = useCallback(() => {
     setFocusCurrentRequested(true);
     closeDialog();
@@ -533,25 +540,12 @@ export default function ExamMindMap() {
               size="small"
               variant="contained"
               color="success"
-              onClick={() => completeAttempt(scoreDisplay)}
+              onClick={() => setFinished(true)}
               disabled={actionBusy || dfsQueue.length > 0 || finished}
-              endIcon={submitting ? <CircularProgress size={16} /> : undefined}
               sx={{ textTransform: 'none' }}
             >
               Nộp bài
             </Button>
-          </span>
-        </Tooltip>
-        <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={handleReset}
-              disabled={actionBusy || (!finished && dfsQueue.length > 0)}
-              color="default"
-            >
-              <ReplayIcon fontSize="small" />
-            </IconButton>
           </span>
         </Tooltip>
       </Paper>
@@ -861,16 +855,30 @@ export default function ExamMindMap() {
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>
                 Xem sơ đồ
               </Button>
-              <Button
-                variant="contained"
-                onClick={handleContinue}
-                size="large"
-                sx={{ flex: 1 }}
-                disabled={actionBusy || dfsQueue.length <= 1}
-                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
-              >
-                Câu tiếp theo
-              </Button>
+              {dfsQueue.length > 1 ? (
+                <Button
+                  variant="contained"
+                  onClick={handleContinue}
+                  size="large"
+                  sx={{ flex: 1 }}
+                  disabled={actionBusy}
+                  endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
+                >
+                  Câu tiếp theo
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => completeAttempt(scoreDisplay)}
+                  size="large"
+                  sx={{ flex: 1 }}
+                  disabled={actionBusy}
+                  endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
+                >
+                  Nộp bài
+                </Button>
+              )}
             </>
           )}
           {isReviewMode && dialogNodeId === currentQueueNodeId && (
