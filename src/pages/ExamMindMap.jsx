@@ -522,6 +522,7 @@ export default function ExamMindMap() {
   const handleReset = async () => {
     if (!exam) return;
     setResultDialogOpen(false); 
+    setDialogNodeId(null);  
     setFinished(false);
     setSubmitResult(null);
     setResetting(true);
