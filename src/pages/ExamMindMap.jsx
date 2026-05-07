@@ -752,8 +752,18 @@ export default function ExamMindMap() {
               {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
             </Button>
           )}
+
+          <Tooltip title="Đặt lại mặc định" placement="left">
+            <IconButton
+              onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
+              sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#f5f5f5' } }}
+              size="small"
+            >
+              <ZoomOutMapIcon color="action" />
+            </IconButton>
+          </Tooltip>
           {!finished && currentQueueNodeId && (
-            <Tooltip title="Đến câu đang làm" placement="left">
+            <Tooltip title="Đến câu gần nhất" placement="left">
               <IconButton
                 onClick={handleGoToCurrent}
                 sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#fff8e1' } }}
