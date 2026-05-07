@@ -748,27 +748,6 @@ export default function ExamMindMap() {
             zIndex: 10,
           }}
         >
-          {!finished && currentQueueNodeId && dialogNodeId === null && (
-            <Button
-              variant="contained"
-              color="warning"
-              startIcon={<PlayArrowIcon />}
-              onClick={() => {
-                setAnswer('');
-                setAnswerResult(null);
-                setDialogNodeId(currentQueueNodeId);
-              }}
-              sx={{
-                boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
-                borderRadius: 3,
-                maxWidth: { xs: 200, sm: 260 },
-                fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                py: { xs: 0.5, sm: 1 },
-              }}
-            >
-              {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
-            </Button>
-          )}
 
           <Tooltip title="Đặt lại vị trí mặc định" placement="left">
               <IconButton
