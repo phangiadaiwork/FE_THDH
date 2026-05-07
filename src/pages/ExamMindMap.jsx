@@ -530,6 +530,7 @@ export default function ExamMindMap() {
       console.error('Reset error:', err);
       setFinished(false);
       setResultDialogOpen(false);
+      setNodeStatuses({}); 
       setSubmitResult(null);
     } finally {
       setResetting(false);
