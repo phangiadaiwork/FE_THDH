@@ -12,12 +12,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isLoggingOut = false;
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isLoggingOut) {
+      isLoggingOut = true;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Reset flag after redirect so fresh login works
+      setTimeout(() => { isLoggingOut = false; }, 2000);
       window.location.href = '/login';
     }
     return Promise.reject(error);

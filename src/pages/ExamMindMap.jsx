@@ -31,6 +31,8 @@ import {
   Tooltip,
   IconButton,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -41,6 +43,8 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
+import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
@@ -132,6 +136,8 @@ function getDFSOrder(root) {
 export default function ExamMindMap() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [exam, setExam] = useState(null);
   const [nodeMap, setNodeMap] = useState({});
@@ -159,6 +165,7 @@ export default function ExamMindMap() {
   const [finished, setFinished] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [rfInstance, setRfInstance] = useState(null);
 
   // ── Build map lên React Flow ──────────────────────────────────────────────
   const buildMap = useCallback((flatNodes, positions, initStatuses, queue) => {
@@ -263,14 +270,6 @@ export default function ExamMindMap() {
     init();
   }, [id, initFresh, restoreProgress]);
 
-  // ── Sync màu node ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    setRfNodes((prev) => prev.map((n) => ({
-      ...n,
-      data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'locked' },
-    })));
-  }, [nodeStatuses, setRfNodes]);
-
   // ── Click node ────────────────────────────────────────────────────────────
   const onNodeClick = useCallback((_evt, node) => {
     const nid = parseInt(node.id);
@@ -299,29 +298,29 @@ export default function ExamMindMap() {
   const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
   const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
 
+  // ── Helper: cập nhật status 1 node trực tiếp trên cả state lẫn rfNodes ──
+  const applyNodeStatus = useCallback((nodeId, status) => {
+    setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
+    setRfNodes((prev) => prev.map((n) =>
+      parseInt(n.id) === nodeId ? { ...n, data: { ...n.data, status } } : n
+    ));
+  }, [setRfNodes]);
+
   // ── Trả lời câu hỏi ──────────────────────────────────────────────────────
   const handleAnswer = async () => {
     if (!dialogNode || !answer.trim() || !isAnswerMode) return;
 
-    const correct =
-      answer.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
-
+    const correct = answer.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
     const currentNodeId = dialogNodeId;
 
     if (correct) {
       scoreRef.current += dialogNode.points;
       setScoreDisplay(scoreRef.current);
-      setNodeStatuses((prev) => ({ ...prev, [currentNodeId]: 'correct' }));
-    } else {
-      setNodeStatuses((prev) => ({ ...prev, [currentNodeId]: 'incorrect' }));
     }
-
+    applyNodeStatus(currentNodeId, correct ? 'correct' : 'incorrect');
     setAnswerResult(correct ? 'correct' : 'incorrect');
-
-    // Ghi nhớ câu trả lời để xem lại
     setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: answer.trim(), isCorrect: correct } }));
 
-    // Lưu lên server
     if (attemptIdRef.current) {
       api.post('/api/attempts/answer', {
         attemptId: attemptIdRef.current,
@@ -338,12 +337,13 @@ export default function ExamMindMap() {
     setDfsQueue(remaining);
     setAnswer('');
     setAnswerResult(null);
-    setDialogNodeId(null); // Đóng dialog, quay về sơ đồ
 
     if (remaining.length > 0) {
-      // Mở khóa node kế tiếp trên sơ đồ (FAB "Mở câu hỏi" sẽ hiện)
-      setNodeStatuses((prev) => ({ ...prev, [remaining[0]]: 'current' }));
+      const nextId = remaining[0];
+      applyNodeStatus(nextId, 'current'); // Mở khóa node tiếp theo ngay lập tức
+      setDialogNodeId(nextId);            // Mở thẳng câu tiếp theo
     } else {
+      setDialogNodeId(null);
       setFinished(true);
       completeAttempt(scoreRef.current);
     }
@@ -384,6 +384,14 @@ export default function ExamMindMap() {
   const answeredCount = totalNodes - dfsQueue.length;
   const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
 
+  const handleGoToCurrent = useCallback(() => {
+    if (!rfInstance || !currentQueueNodeId) return;
+    const node = rfNodes.find((n) => parseInt(n.id) === currentQueueNodeId);
+    if (node) {
+      rfInstance.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
+    }
+  }, [rfInstance, currentQueueNodeId, rfNodes]);
+
   if (loading) {
     return (
       <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -397,26 +405,30 @@ export default function ExamMindMap() {
       <Navbar />
 
       {/* Info bar */}
-      <Paper elevation={1} square sx={{ px: 3, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/student')} variant="outlined">
-          Quay lại
-        </Button>
-        <Typography variant="subtitle1" fontWeight="bold" sx={{ flex: 1, minWidth: 150 }}>
+      <Paper elevation={1} square sx={{ px: { xs: 1.5, sm: 3 }, py: 1, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
+        <IconButton size="small" onClick={() => navigate('/student')} sx={{ flexShrink: 0 }}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography
+          variant="subtitle2"
+          fontWeight="bold"
+          noWrap
+          sx={{ flex: 1, minWidth: 0, fontSize: { xs: '0.8rem', sm: '1rem' } }}
+        >
           {exam?.title}
         </Typography>
-        <Chip label={`Điểm: ${scoreDisplay}`} color="primary" variant="outlined" />
-        <Chip label={`${answeredCount}/${totalNodes} câu`} color="secondary" variant="outlined" />
+        <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
+        <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
         <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
           <span>
-            <Button
+            <IconButton
               size="small"
-              startIcon={<ReplayIcon />}
               onClick={handleReset}
-              variant="text"
               disabled={!finished && dfsQueue.length > 0}
+              color="default"
             >
-              Làm lại
-            </Button>
+              <ReplayIcon fontSize="small" />
+            </IconButton>
           </span>
         </Tooltip>
       </Paper>
@@ -436,6 +448,7 @@ export default function ExamMindMap() {
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
+          onInit={setRfInstance}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           nodesDraggable={true}
@@ -449,30 +462,43 @@ export default function ExamMindMap() {
           <Background color="#e0e0e0" gap={20} />
         </ReactFlow>
 
-        {/* FAB mở câu hỏi hiện tại khi dialog đã đóng */}
-        {!finished && currentQueueNodeId && dialogNodeId === null && (
-          <Button
-            variant="contained"
-            color="warning"
-            startIcon={<PlayArrowIcon />}
-            onClick={() => {
-              setAnswer('');
-              setAnswerResult(null);
-              setDialogNodeId(currentQueueNodeId);
-            }}
-            sx={{
-              position: 'absolute',
-              bottom: 24,
-              right: 24,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
-              zIndex: 10,
-              borderRadius: 3,
-              maxWidth: 260,
-            }}
-          >
-            ▶ {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
-          </Button>
-        )}
+        {/* Nhóm nút điều hướng góc phải dưới */}
+        <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, zIndex: 10 }}>
+          {/* FAB mở câu hỏi hiện tại */}
+          {!finished && currentQueueNodeId && dialogNodeId === null && (
+            <Button
+              variant="contained"
+              color="warning"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => { setAnswer(''); setAnswerResult(null); setDialogNodeId(currentQueueNodeId); }}
+              sx={{ boxShadow: '0 4px 14px rgba(0,0,0,0.3)', borderRadius: 3, maxWidth: 260 }}
+            >
+              ▶ {nodeMap[currentQueueNodeId]?.label || 'Câu hỏi hiện tại'}
+            </Button>
+          )}
+          {/* Nút đến câu đang làm */}
+          {!finished && currentQueueNodeId && (
+            <Tooltip title="Đến câu đang làm" placement="left">
+              <IconButton
+                onClick={handleGoToCurrent}
+                sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#fff8e1' } }}
+                size="small"
+              >
+                <CenterFocusStrongIcon color="warning" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {/* Nút reset về kích cỡ mặc định */}
+          <Tooltip title="Về kích cỡ mặc định" placement="left">
+            <IconButton
+              onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
+              sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#f5f5f5' } }}
+              size="small"
+            >
+              <ZoomOutMapIcon color="action" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* ── Dialog câu hỏi / xem lại ───────────────────────────────────── */}
@@ -481,10 +507,11 @@ export default function ExamMindMap() {
         onClose={closeDialog}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h6" sx={{ flex: 1 }}>
+            <Typography variant="h6" sx={{ flex: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               {dialogNode?.label}
             </Typography>
             <Chip
@@ -507,7 +534,11 @@ export default function ExamMindMap() {
                 variant="outlined"
               />
             )}
-            {/* Close icon removed: keep only the "Xem sơ đồ" button per user choice */}
+            {isMobile && (
+              <IconButton size="small" onClick={closeDialog} sx={{ ml: 0.5 }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
           </Box>
         </DialogTitle>
 

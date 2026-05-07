@@ -185,10 +185,10 @@ function TeacherDashboard() {
   return (
     <>
       <Navbar />
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 6 }}>
         {/* Header */}
-        <Box sx={{ background: 'linear-gradient(135deg, #1565c0 0%, #6a1b9a 100%)', borderRadius: 3, p: 3, mb: 4, color: 'white' }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>Bảng điều khiển</Typography>
+        <Box sx={{ background: 'linear-gradient(135deg, #1565c0 0%, #6a1b9a 100%)', borderRadius: 3, p: { xs: 2, sm: 3 }, mb: 4, color: 'white' }}>
+          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>Bảng điều khiển</Typography>
           <Typography variant="body1" sx={{ opacity: 0.85 }}>Quản lý bài tập sơ đồ tư duy và học sinh</Typography>
           <Box sx={{ display: 'flex', gap: 2, mt: 2.5, flexWrap: 'wrap' }}>
             <Button
@@ -251,30 +251,30 @@ function TeacherDashboard() {
         </Box>
 
         {/* Stats summary */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={4}>
-            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-              <AccountTreeIcon color="primary" sx={{ fontSize: 36 }} />
-              <Typography variant="h4" fontWeight="bold">{exams.length}</Typography>
-              <Typography color="text.secondary">Bài tập</Typography>
+        <Grid container spacing={{ xs: 1.5, sm: 3 }} sx={{ mb: 4 }}>
+          <Grid item xs={4}>
+            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: { xs: 1, sm: 2 } }}>
+              <AccountTreeIcon color="primary" sx={{ fontSize: { xs: 24, sm: 36 } }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{exams.length}</Typography>
+              <Typography color="text.secondary" variant="body2">Bài tập</Typography>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-              <PeopleIcon color="secondary" sx={{ fontSize: 36 }} />
-              <Typography variant="h4" fontWeight="bold">
+          <Grid item xs={4}>
+            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: { xs: 1, sm: 2 } }}>
+              <PeopleIcon color="secondary" sx={{ fontSize: { xs: 24, sm: 36 } }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>
                 {exams.reduce((s, e) => s + (e._count?.nodes || 0), 0)}
               </Typography>
-              <Typography color="text.secondary">Tổng số node</Typography>
+              <Typography color="text.secondary" variant="body2">Số node</Typography>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={4}>
-            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: 2 }}>
-              <BarChartIcon sx={{ fontSize: 36, color: '#2e7d32' }} />
-              <Typography variant="h4" fontWeight="bold">
+          <Grid item xs={4}>
+            <Card elevation={2} sx={{ borderRadius: 2, textAlign: 'center', p: { xs: 1, sm: 2 } }}>
+              <BarChartIcon sx={{ fontSize: { xs: 24, sm: 36 }, color: '#2e7d32' }} />
+              <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>
                 {exams.filter((e) => e._count?.nodes > 0).length}
               </Typography>
-              <Typography color="text.secondary">Bài có node</Typography>
+              <Typography color="text.secondary" variant="body2">Có node</Typography>
             </Card>
           </Grid>
         </Grid>

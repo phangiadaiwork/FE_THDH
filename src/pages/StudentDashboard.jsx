@@ -68,26 +68,26 @@ function StudentDashboard() {
   return (
     <>
       <Navbar />
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 6 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 6, px: { xs: 1.5, sm: 3 } }}>
         {/* Header */}
         <Box
           sx={{
             background: 'linear-gradient(135deg, #1565c0 0%, #6a1b9a 100%)',
             borderRadius: 3,
-            p: 3,
+            p: { xs: 2, sm: 3 },
             mb: 4,
             color: 'white',
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
-          <SchoolIcon sx={{ fontSize: 48 }} />
-          <Box>
-            <Typography variant="h5" fontWeight="bold">
+          <SchoolIcon sx={{ fontSize: { xs: 36, sm: 48 }, flexShrink: 0 }} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h5" fontWeight="bold" noWrap sx={{ fontSize: { xs: '1.05rem', sm: '1.5rem' } }}>
               Xin chào, {user.fullName}!
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+            <Typography variant="body2" sx={{ opacity: 0.85 }} noWrap>
               Lớp: {user.className} {user.school && `• ${user.school}`}
             </Typography>
           </Box>

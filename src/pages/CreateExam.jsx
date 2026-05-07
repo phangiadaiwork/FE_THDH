@@ -89,9 +89,15 @@ export default function CreateExam() {
   const [saveError, setSaveError] = useState('');
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
+  const labelFieldRef = useRef(null);
   const idCounter = useRef(1);
 
   const selectedNode = rfNodes.find((n) => n.id === selectedId);
+
+  // Auto-focus nhãn khi chọn / tạo node
+  const focusLabel = useCallback(() => {
+    setTimeout(() => labelFieldRef.current?.focus(), 30);
+  }, []);
 
   // ── Thêm node gốc ───────────────────────────────────────────────────────
   const addRootNode = () => {
@@ -100,11 +106,12 @@ export default function CreateExam() {
       id,
       type: 'editorNode',
       position: { x: 300, y: 50 },
-      data: { label: 'Chủ đề chính', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
+      data: { label: '', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
     }]);
     setRfEdges([]);
     setSelectedId(id);
-    setForm({ ...EMPTY_FORM, label: 'Chủ đề chính' });
+    setForm({ ...EMPTY_FORM, label: '' });
+    focusLabel();
   };
 
   // ── Thêm node con ────────────────────────────────────────────────────────
@@ -123,7 +130,7 @@ export default function CreateExam() {
         x: parent.position.x + (siblingCount - Math.floor(siblingCount / 2)) * 220 - 90,
         y: parent.position.y + 140,
       },
-      data: { label: `Node ${id}`, question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
+      data: { label: '', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
     }]);
     setRfEdges((prev) => [...prev, {
       id: `e${selectedId}-${id}`,
@@ -133,7 +140,8 @@ export default function CreateExam() {
       style: { stroke: '#90caf9', strokeWidth: 2 },
     }]);
     setSelectedId(id);
-    setForm({ ...EMPTY_FORM, label: `Node ${id}` });
+    setForm({ ...EMPTY_FORM, label: '' });
+    focusLabel();
   };
 
   // ── Xóa node được chọn ──────────────────────────────────────────────────
@@ -164,7 +172,8 @@ export default function CreateExam() {
       points: node.data.points || 1,
       isMultiChoice: node.data.isMultiChoice || false,
     });
-  }, []);
+    focusLabel();
+  }, [focusLabel]);
 
   const onPaneClick = useCallback(() => { setSelectedId(null); }, []);
 
@@ -367,7 +376,17 @@ export default function CreateExam() {
             <>
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Chỉnh sửa node</Typography>
               <Divider sx={{ mb: 2 }} />
-              <TextField fullWidth label="Nhãn (label)" value={form.label} onChange={(e) => updateForm('label', e.target.value)} size="small" sx={{ mb: 2 }} required />
+              <TextField
+                fullWidth
+                label="Tên node"
+                value={form.label}
+                onChange={(e) => updateForm('label', e.target.value)}
+                size="small"
+                sx={{ mb: 2 }}
+                required
+                placeholder="Nhập tên cho node..."
+                inputRef={labelFieldRef}
+              />
               <TextField fullWidth label="Câu hỏi *" value={form.question} onChange={(e) => updateForm('question', e.target.value)} size="small" multiline rows={3} sx={{ mb: 2 }} required />
 
               <FormControlLabel
