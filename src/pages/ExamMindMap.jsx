@@ -502,9 +502,7 @@ export default function ExamMindMap() {
                 variant="outlined"
               />
             )}
-            <IconButton size="small" onClick={closeDialog}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
+            {/* Close icon removed: keep only the "Xem sơ đồ" button per user choice */}
           </Box>
         </DialogTitle>
 
@@ -670,7 +668,7 @@ export default function ExamMindMap() {
           )}
           {isReviewMode && (
             <Button variant="outlined" onClick={closeDialog} fullWidth>
-              Đóng
+              Xem sơ đồ
             </Button>
           )}
         </DialogActions>
