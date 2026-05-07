@@ -378,15 +378,23 @@ export default function ExamMindMap() {
   const handleSelectOption = (letter) => setAnswer(letter);
 
   // ── Tiếp tục sang node kế tiếp ────────────────────────────────────────────
-  const handleContinue = () => {
-    if (actionBusy || (blockRef.current && answerResult === null)) return; // guard khi chưa trả lời / đang bận
-    blockRef.current = false; // reset cho câu tiếp theo
+  const handleContinue = useCallback(() => {
+    if (actionBusy || (blockRef.current && answerResult === null)) return;
+    blockRef.current = false;
 
+    // Lấy node hiện tại để đánh dấu là 'correct' hoặc 'incorrect'
+    const currentNodeId = dfsQueue[0];
+    if (currentNodeId && answerResult !== null) {
+      applyNodeStatus(currentNodeId, answerResult === 'correct' ? 'correct' : 'incorrect');
+    }
+
+    // Loại bỏ node hiện tại khỏi queue
     const remaining = dfsQueue.slice(1);
     setDfsQueue(remaining);
     setAnswer('');
     setAnswerResult(null);
 
+    // Chuyển sang node tiếp theo
     if (remaining.length > 0) {
       const nextId = remaining[0];
       applyNodeStatus(nextId, 'current');
@@ -394,9 +402,8 @@ export default function ExamMindMap() {
     } else {
       setDialogNodeId(null);
       setFinished(true);
-      completeAttempt(scoreRef.current);
     }
-  };
+  }, [dfsQueue, answerResult, actionBusy, applyNodeStatus]);
 
 
   // ── Hoàn thành bài ────────────────────────────────────────────────────────
@@ -518,22 +525,6 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => {
-            if (currentQueueNodeId) {
-              const node = rfNodes.find((n) => parseInt(n.id) === currentQueueNodeId);
-              if (rfInstanceRef.current && node) {
-                rfInstanceRef.current.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
-              }
-            }
-          }}
-          disabled={finished || dfsQueue.length === 0}
-          sx={{ textTransform: 'none' }}
-        >
-          Tới câu sắp làm
-        </Button>
         <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
           <span>
             <Button
