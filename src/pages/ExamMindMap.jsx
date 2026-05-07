@@ -172,10 +172,8 @@ export default function ExamMindMap() {
   // Dialog câu hỏi
   const [answer, setAnswer] = useState('');
   const [answerResult, setAnswerResult] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(true);
 
-  // Dialog tiếp tục làm dở
-  const [continueDialog, setContinueDialog] = useState(false);
-  const [savedProgress, setSavedProgress] = useState(null);
 
   // Kết quả cuối
   const [finished, setFinished] = useState(false);
@@ -283,10 +281,9 @@ export default function ExamMindMap() {
         const progress = progressRes.data;
 
         if (progress && progress.nodeAnswers?.length > 0) {
-          setSavedProgress(progress);
-          setContinueDialog(true);
-          // Hiển thị map nhưng chưa init cho đến khi user chọn
-          initFresh(examData.nodes);
+          // Bắt buộc tiếp tục (không cho chọn)
+          attemptIdRef.current = progress.attemptId;
+          restoreProgress(examData.nodes, progress.nodeAnswers);
         } else {
           // Bắt đầu mới
           const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
@@ -300,7 +297,7 @@ export default function ExamMindMap() {
       }
     };
     init();
-  }, [id, initFresh]);
+  }, [id, initFresh, restoreProgress]);
 
   // ── Cập nhật màu node ────────────────────────────────────────────────────
   useEffect(() => {
@@ -312,19 +309,6 @@ export default function ExamMindMap() {
     );
   }, [nodeStatuses, setRfNodes]);
 
-  // ── Xử lý chọn tiếp tục hay làm mới ────────────────────────────────────
-  const handleContinueChoice = async (continueOld) => {
-    setContinueDialog(false);
-    if (continueOld && savedProgress) {
-      attemptIdRef.current = savedProgress.attemptId;
-      restoreProgress(exam.nodes, savedProgress.nodeAnswers);
-    } else {
-      const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
-      attemptIdRef.current = startData.attemptId;
-      initFresh(exam.nodes);
-    }
-    setSavedProgress(null);
-  };
 
   // ── Xử lý trả lời ───────────────────────────────────────────────────────
   const currentNodeId = dfsQueue[0] ?? null;
@@ -365,6 +349,7 @@ export default function ExamMindMap() {
     setDfsQueue(remaining);
     setAnswer('');
     setAnswerResult(null);
+    setDialogOpen(true); // Mở dialog cho câu tiếp theo
 
     if (remaining.length > 0) {
       const nextId = remaining[0];
@@ -432,9 +417,19 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`Điểm: ${scoreDisplay}`} color="primary" variant="outlined" />
         <Chip label={`${totalNodes - dfsQueue.length}/${totalNodes} node`} color="secondary" variant="outlined" />
-        <Button size="small" startIcon={<ReplayIcon />} onClick={handleReset} variant="text">
-          Làm lại
-        </Button>
+        <Tooltip title={!finished && dfsQueue.length > 0 ? "Phải hoàn thành bài hiện tại trước" : ""}>
+          <span>
+            <Button
+              size="small"
+              startIcon={<ReplayIcon />}
+              onClick={handleReset}
+              variant="text"
+              disabled={!finished && dfsQueue.length > 0}
+            >
+              Làm lại
+            </Button>
+          </span>
+        </Tooltip>
       </Paper>
 
       <LinearProgress
@@ -444,7 +439,7 @@ export default function ExamMindMap() {
         color={progress === 100 ? 'success' : 'primary'}
       />
 
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, position: 'relative' }}>
         <ReactFlow
           nodes={rfNodes}
           edges={rfEdges}
@@ -463,43 +458,39 @@ export default function ExamMindMap() {
           <Controls showInteractive={false} />
           <Background color="#e0e0e0" gap={20} />
         </ReactFlow>
-      </Box>
 
-      {/* ── Dialog tiếp tục hay làm mới ─────────────────────────────────── */}
-      <Dialog open={continueDialog} maxWidth="xs" fullWidth disableEscapeKeyDown>
-        <DialogTitle sx={{ textAlign: 'center' }}>
-          <PlayArrowIcon sx={{ fontSize: 40, color: '#1565c0' }} />
-          <Typography variant="h6" fontWeight="bold" sx={{ mt: 1 }}>
-            Bài đang làm dở
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            Bạn có bài làm chưa hoàn thành. Bạn muốn tiếp tục hay bắt đầu lại từ đầu?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
-          <Button variant="outlined" onClick={() => handleContinueChoice(false)}>
-            Làm lại từ đầu
+        {/* Floating button to reopen dialog if closed */}
+        {!finished && dfsQueue.length > 0 && !dialogOpen && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => setDialogOpen(true)}
+            sx={{
+              position: 'absolute',
+              bottom: 24,
+              right: 24,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              zIndex: 10,
+            }}
+          >
+            Mở câu hỏi
           </Button>
-          <Button variant="contained" onClick={() => handleContinueChoice(true)} autoFocus>
-            Tiếp tục
-          </Button>
-        </DialogActions>
-      </Dialog>
+        )}
+      </Box>
 
       {/* ── Dialog câu hỏi ─────────────────────────────────────────────── */}
       <Dialog
-        open={!finished && !continueDialog && dfsQueue.length > 0}
+        open={!finished && dfsQueue.length > 0 && dialogOpen}
+        onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
-        disableEscapeKeyDown
       >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h6" sx={{ flex: 1 }}>
-              {currentNode?.label}
-            </Typography>
+        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" sx={{ flex: 1 }}>
+            {currentNode?.label}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             <Chip label={`+${currentNode?.points} điểm`} color="primary" size="small" />
             <Chip
               label={`${totalNodes - dfsQueue.length + 1}/${totalNodes}`}
