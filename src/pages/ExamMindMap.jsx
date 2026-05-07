@@ -543,16 +543,21 @@ export default function ExamMindMap() {
   };
 
   const handleGoToCurrent = useCallback(() => {
-    if (!rfInstanceRef.current || !currentQueueNodeId) return;
-    const node = rfNodes.find((n) => parseInt(n.id) === currentQueueNodeId);
+    if (!rfInstanceRef.current) return;
+    // Tìm node đầu tiên có status 'current' (chỉ có 1 node current duy nhất)
+    const currentId = Object.keys(nodeStatuses).find(
+      (id) => nodeStatuses[id] === 'current'
+    );
+    if (!currentId) return;
+    const node = rfNodes.find((n) => parseInt(n.id) === parseInt(currentId));
     if (node) {
       rfInstanceRef.current.setCenter(node.position.x + 90, node.position.y + 40, {
         zoom: 1.5,
         duration: 450,
       });
     }
-  }, [currentQueueNodeId, rfNodes]);
-
+  }, [nodeStatuses, rfNodes]);
+  
   useEffect(() => {
     if (focusCurrentRequested && dialogNodeId === null) {
       handleGoToCurrent();
