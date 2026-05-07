@@ -6,6 +6,7 @@ import ExamMindMap from './pages/ExamMindMap';
 import TeacherDashboard from './pages/TeacherDashboard';
 import CreateExam from './pages/CreateExam';
 import Stats from './pages/Stats';
+import StudentManagement from './pages/StudentManagement';
 import PrivateRoute from './components/PrivateRoute';
 
 const theme = createTheme({
@@ -64,6 +65,14 @@ function App() {
             element={
               <PrivateRoute role="TEACHER">
                 <Stats />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/teacher/students"
+            element={
+              <PrivateRoute role="TEACHER">
+                <StudentManagement />
               </PrivateRoute>
             }
           />

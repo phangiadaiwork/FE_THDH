@@ -22,12 +22,17 @@ import {
   IconButton,
   Tooltip,
   CircularProgress,
+  FormControlLabel,
+  Switch,
+  Stack,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
@@ -43,9 +48,7 @@ function EditorNode({ data, selected }) {
         minWidth: 130,
         maxWidth: 190,
         textAlign: 'center',
-        boxShadow: selected
-          ? '0 4px 12px rgba(21,101,192,0.35)'
-          : '0 2px 6px rgba(0,0,0,0.1)',
+        boxShadow: selected ? '0 4px 12px rgba(21,101,192,0.35)' : '0 2px 6px rgba(0,0,0,0.1)',
         cursor: 'pointer',
         transition: 'all 0.2s',
       }}
@@ -57,6 +60,9 @@ function EditorNode({ data, selected }) {
       <Typography variant="caption" color="text.secondary" display="block">
         {data.points} điểm
       </Typography>
+      {data.isMultiChoice && (
+        <Chip label="Trắc nghiệm" size="small" color="info" sx={{ mt: 0.3, height: 18, fontSize: 10 }} />
+      )}
       {data.question ? (
         <Chip label="Có câu hỏi" size="small" color="success" sx={{ mt: 0.3, height: 18, fontSize: 10 }} />
       ) : (
@@ -69,6 +75,8 @@ function EditorNode({ data, selected }) {
 
 const nodeTypes = { editorNode: EditorNode };
 
+const EMPTY_FORM = { label: '', question: '', options: ['', '', '', ''], correctAnswer: '', hint: '', points: 1, isMultiChoice: false };
+
 // ────────────────────────────────────────────────────────────────────────────
 export default function CreateExam() {
   const navigate = useNavigate();
@@ -76,34 +84,27 @@ export default function CreateExam() {
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [form, setForm] = useState({
-    label: '',
-    question: '',
-    correctAnswer: '',
-    hint: '',
-    points: 1,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
   const idCounter = useRef(1);
 
-  // ── Tìm node được chọn ───────────────────────────────────────────────────
   const selectedNode = rfNodes.find((n) => n.id === selectedId);
 
   // ── Thêm node gốc ───────────────────────────────────────────────────────
   const addRootNode = () => {
     const id = String(idCounter.current++);
-    setRfNodes([
-      {
-        id,
-        type: 'editorNode',
-        position: { x: 300, y: 50 },
-        data: { label: 'Chủ đề chính', question: '', correctAnswer: '', hint: '', points: 1 },
-      },
-    ]);
+    setRfNodes([{
+      id,
+      type: 'editorNode',
+      position: { x: 300, y: 50 },
+      data: { label: 'Chủ đề chính', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
+    }]);
     setRfEdges([]);
     setSelectedId(id);
-    setForm({ label: 'Chủ đề chính', question: '', correctAnswer: '', hint: '', points: 1 });
+    setForm({ ...EMPTY_FORM, label: 'Chủ đề chính' });
   };
 
   // ── Thêm node con ────────────────────────────────────────────────────────
@@ -115,34 +116,29 @@ export default function CreateExam() {
     const siblingCount = rfEdges.filter((e) => e.source === selectedId).length;
     const id = String(idCounter.current++);
 
-    const newNode = {
+    setRfNodes((prev) => [...prev, {
       id,
       type: 'editorNode',
       position: {
         x: parent.position.x + (siblingCount - Math.floor(siblingCount / 2)) * 220 - 90,
         y: parent.position.y + 140,
       },
-      data: { label: `Node ${id}`, question: '', correctAnswer: '', hint: '', points: 1 },
-    };
-
-    const newEdge = {
+      data: { label: `Node ${id}`, question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
+    }]);
+    setRfEdges((prev) => [...prev, {
       id: `e${selectedId}-${id}`,
       source: selectedId,
       target: id,
       markerEnd: { type: MarkerType.ArrowClosed, color: '#90caf9' },
       style: { stroke: '#90caf9', strokeWidth: 2 },
-    };
-
-    setRfNodes((prev) => [...prev, newNode]);
-    setRfEdges((prev) => [...prev, newEdge]);
+    }]);
     setSelectedId(id);
-    setForm({ label: `Node ${id}`, question: '', correctAnswer: '', hint: '', points: 1 });
+    setForm({ ...EMPTY_FORM, label: `Node ${id}` });
   };
 
   // ── Xóa node được chọn ──────────────────────────────────────────────────
   const deleteSelectedNode = () => {
     if (!selectedId) return;
-    // Thu thập tất cả node con (đệ quy) để xóa cùng
     const descendants = new Set();
     const queue = [selectedId];
     while (queue.length > 0) {
@@ -151,31 +147,26 @@ export default function CreateExam() {
       rfEdges.filter((e) => e.source === nid).forEach((e) => queue.push(e.target));
     }
     setRfNodes((prev) => prev.filter((n) => !descendants.has(n.id)));
-    setRfEdges((prev) =>
-      prev.filter((e) => !descendants.has(e.source) && !descendants.has(e.target))
-    );
+    setRfEdges((prev) => prev.filter((e) => !descendants.has(e.source) && !descendants.has(e.target)));
     setSelectedId(null);
-    setForm({ label: '', question: '', correctAnswer: '', hint: '', points: 1 });
+    setForm(EMPTY_FORM);
   };
 
   // ── Chọn node ────────────────────────────────────────────────────────────
-  const onNodeClick = useCallback(
-    (_event, node) => {
-      setSelectedId(node.id);
-      setForm({
-        label: node.data.label || '',
-        question: node.data.question || '',
-        correctAnswer: node.data.correctAnswer || '',
-        hint: node.data.hint || '',
-        points: node.data.points || 1,
-      });
-    },
-    []
-  );
-
-  const onPaneClick = useCallback(() => {
-    setSelectedId(null);
+  const onNodeClick = useCallback((_event, node) => {
+    setSelectedId(node.id);
+    setForm({
+      label: node.data.label || '',
+      question: node.data.question || '',
+      options: node.data.options || ['', '', '', ''],
+      correctAnswer: node.data.correctAnswer || '',
+      hint: node.data.hint || '',
+      points: node.data.points || 1,
+      isMultiChoice: node.data.isMultiChoice || false,
+    });
   }, []);
+
+  const onPaneClick = useCallback(() => { setSelectedId(null); }, []);
 
   // ── Cập nhật form → node data ────────────────────────────────────────────
   const updateForm = (field, value) => {
@@ -183,38 +174,70 @@ export default function CreateExam() {
     setForm(updated);
     if (selectedId) {
       setRfNodes((prev) =>
-        prev.map((n) => (n.id === selectedId ? { ...n, data: { ...updated } } : n))
+        prev.map((n) => n.id === selectedId ? { ...n, data: { ...updated } } : n)
       );
+    }
+  };
+
+  const updateOption = (index, value) => {
+    const opts = [...(form.options || ['', '', '', ''])];
+    opts[index] = value;
+    updateForm('options', opts);
+  };
+
+  // ── Tải template Excel bài tập ───────────────────────────────────────────
+  const downloadTemplate = () => {
+    const url = `${import.meta.env.VITE_API_BASE_URL || ''}/api/exams/template`;
+    const token = localStorage.getItem('token');
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.blob())
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'mau_bai_tap.xlsx';
+        a.click();
+      })
+      .catch(console.error);
+  };
+
+  // ── Import từ Excel ──────────────────────────────────────────────────────
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !title.trim()) {
+      alert('Vui lòng nhập tiêu đề bài tập trước khi import');
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title.trim());
+      await api.post('/api/exams/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      navigate('/teacher');
+    } catch (err) {
+      setSaveError(err.response?.data?.error || 'Import thất bại');
+    } finally {
+      setImporting(false);
+      e.target.value = '';
     }
   };
 
   // ── Lưu bài tập ─────────────────────────────────────────────────────────
   const saveExam = async () => {
     setSaveError('');
+    if (!title.trim()) { setSaveError('Vui lòng nhập tiêu đề bài tập'); return; }
+    if (rfNodes.length === 0) { setSaveError('Cần ít nhất một node'); return; }
 
-    if (!title.trim()) {
-      setSaveError('Vui lòng nhập tiêu đề bài tập');
-      return;
-    }
-    if (rfNodes.length === 0) {
-      setSaveError('Cần ít nhất một node');
-      return;
-    }
-
-    // Kiểm tra tất cả node có câu hỏi và đáp án chưa
     const missing = rfNodes.filter((n) => !n.data.question || !n.data.correctAnswer);
     if (missing.length > 0) {
-      setSaveError(
-        `${missing.length} node chưa có câu hỏi / đáp án: ${missing.map((n) => n.data.label).join(', ')}`
-      );
+      setSaveError(`${missing.length} node chưa có câu hỏi / đáp án: ${missing.map((n) => n.data.label).join(', ')}`);
       return;
     }
 
-    // Xây dựng parentMap từ edges
     const parentMap = {};
     rfEdges.forEach((e) => { parentMap[e.target] = e.source; });
-
-    // Tính thứ tự con của mỗi node
     const childOrderMap = {};
     rfEdges.forEach((e) => {
       if (!childOrderMap[e.source]) childOrderMap[e.source] = [];
@@ -225,11 +248,17 @@ export default function CreateExam() {
       const parentTempId = parentMap[n.id] || null;
       const siblings = parentTempId ? (childOrderMap[parentTempId] || []) : [];
       const order = siblings.indexOf(n.id);
+
+      const opts = n.data.isMultiChoice
+        ? n.data.options?.filter((o) => o.trim()).map((o, i) => `${['A', 'B', 'C', 'D'][i]}. ${o}`)
+        : null;
+
       return {
         tempId: n.id,
         parentTempId,
         label: n.data.label || '',
         question: n.data.question || '',
+        options: opts || null,
         correctAnswer: n.data.correctAnswer || '',
         hint: n.data.hint || '',
         points: parseInt(n.data.points) || 1,
@@ -270,37 +299,40 @@ export default function CreateExam() {
           placeholder="Nhập tiêu đề..."
         />
 
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={addRootNode}
-          disabled={hasRoot}
-          size="small"
-        >
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={addRootNode} disabled={hasRoot} size="small">
           Thêm node gốc
         </Button>
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={addChildNode}
-          disabled={!selectedId}
-          size="small"
-          color="secondary"
-        >
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={addChildNode} disabled={!selectedId} size="small" color="secondary">
           Thêm node con
         </Button>
         <Tooltip title="Xóa node đang chọn (và tất cả con)">
           <span>
-            <IconButton
-              color="error"
-              onClick={deleteSelectedNode}
-              disabled={!selectedId}
-              size="small"
-            >
+            <IconButton color="error" onClick={deleteSelectedNode} disabled={!selectedId} size="small">
               <DeleteIcon />
             </IconButton>
           </span>
         </Tooltip>
+
+        <Divider orientation="vertical" flexItem />
+
+        <Tooltip title="Tải file Excel mẫu">
+          <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
+            Tải mẫu
+          </Button>
+        </Tooltip>
+        <Tooltip title="Import bài tập từ file Excel (cần nhập tiêu đề trước)">
+          <Button
+            variant="outlined"
+            size="small"
+            color="success"
+            startIcon={importing ? <CircularProgress size={14} /> : <UploadFileIcon />}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing || !title.trim()}
+          >
+            Import Excel
+          </Button>
+        </Tooltip>
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportExcel} />
 
         <Box sx={{ flex: 1 }} />
 
@@ -311,7 +343,6 @@ export default function CreateExam() {
             size="small"
           />
         )}
-
         <Button
           variant="contained"
           startIcon={<SaveIcon />}
@@ -330,63 +361,62 @@ export default function CreateExam() {
       )}
 
       <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar form chỉnh sửa node */}
-        <Paper
-          elevation={3}
-          sx={{
-            width: 300,
-            flexShrink: 0,
-            overflowY: 'auto',
-            p: 2,
-            borderRadius: 0,
-          }}
-        >
+        {/* Sidebar */}
+        <Paper elevation={3} sx={{ width: 320, flexShrink: 0, overflowY: 'auto', p: 2, borderRadius: 0 }}>
           {selectedNode ? (
             <>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                Chỉnh sửa node
-              </Typography>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Chỉnh sửa node</Typography>
               <Divider sx={{ mb: 2 }} />
-              <TextField
-                fullWidth
-                label="Nhãn (label)"
-                value={form.label}
-                onChange={(e) => updateForm('label', e.target.value)}
-                size="small"
-                sx={{ mb: 2 }}
-                required
+              <TextField fullWidth label="Nhãn (label)" value={form.label} onChange={(e) => updateForm('label', e.target.value)} size="small" sx={{ mb: 2 }} required />
+              <TextField fullWidth label="Câu hỏi *" value={form.question} onChange={(e) => updateForm('question', e.target.value)} size="small" multiline rows={3} sx={{ mb: 2 }} required />
+
+              <FormControlLabel
+                sx={{ mb: 1.5 }}
+                control={
+                  <Switch
+                    checked={form.isMultiChoice}
+                    onChange={(e) => updateForm('isMultiChoice', e.target.checked)}
+                    size="small"
+                  />
+                }
+                label={<Typography variant="caption">Trắc nghiệm (A/B/C/D)</Typography>}
               />
-              <TextField
-                fullWidth
-                label="Câu hỏi *"
-                value={form.question}
-                onChange={(e) => updateForm('question', e.target.value)}
-                size="small"
-                multiline
-                rows={3}
-                sx={{ mb: 2 }}
-                required
-              />
-              <TextField
-                fullWidth
-                label="Đáp án đúng *"
-                value={form.correctAnswer}
-                onChange={(e) => updateForm('correctAnswer', e.target.value)}
-                size="small"
-                sx={{ mb: 2 }}
-                required
-                helperText="So sánh không phân biệt hoa thường"
-              />
-              <TextField
-                fullWidth
-                label="Gợi ý (hint)"
-                value={form.hint}
-                onChange={(e) => updateForm('hint', e.target.value)}
-                size="small"
-                multiline
-                rows={2}
-                sx={{ mb: 2 }}
-              />
+
+              {form.isMultiChoice ? (
+                <Stack spacing={1} sx={{ mb: 2 }}>
+                  {['A', 'B', 'C', 'D'].map((letter, i) => (
+                    <TextField
+                      key={letter}
+                      fullWidth
+                      label={`Phương án ${letter}`}
+                      value={form.options?.[i] || ''}
+                      onChange={(e) => updateOption(i, e.target.value)}
+                      size="small"
+                    />
+                  ))}
+                  <TextField
+                    fullWidth
+                    label="Đáp án đúng (A/B/C/D) *"
+                    value={form.correctAnswer}
+                    onChange={(e) => updateForm('correctAnswer', e.target.value.toUpperCase().replace(/[^ABCD]/g, ''))}
+                    size="small"
+                    inputProps={{ maxLength: 1 }}
+                    helperText="Nhập một trong các ký tự: A, B, C, D"
+                  />
+                </Stack>
+              ) : (
+                <TextField
+                  fullWidth
+                  label="Đáp án đúng *"
+                  value={form.correctAnswer}
+                  onChange={(e) => updateForm('correctAnswer', e.target.value)}
+                  size="small"
+                  sx={{ mb: 2 }}
+                  helperText="So sánh không phân biệt hoa thường"
+                />
+              )}
+
+              <TextField fullWidth label="Gợi ý (hint)" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} size="small" multiline rows={2} sx={{ mb: 2 }} />
               <TextField
                 fullWidth
                 label="Điểm"
@@ -401,9 +431,7 @@ export default function CreateExam() {
             <Box sx={{ textAlign: 'center', mt: 6 }}>
               <AccountTreeIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
               <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-                {hasRoot
-                  ? 'Click vào node để chỉnh sửa'
-                  : 'Nhấn "Thêm node gốc" để bắt đầu'}
+                {hasRoot ? 'Click vào node để chỉnh sửa' : 'Nhấn "Thêm node gốc" để bắt đầu hoặc Import từ Excel'}
               </Typography>
             </Box>
           )}

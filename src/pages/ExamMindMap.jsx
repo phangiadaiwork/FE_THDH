@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Controls,
@@ -24,6 +24,10 @@ import {
   CircularProgress,
   LinearProgress,
   Paper,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormControl,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -31,20 +35,23 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReplayIcon from '@mui/icons-material/Replay';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import LockIcon from '@mui/icons-material/Lock';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
 // ─── Màu theo trạng thái node ──────────────────────────────────────────────
 const STATUS_STYLE = {
-  pending:   { bg: '#ffffff', border: '#90caf9', shadow: '0 2px 6px rgba(0,0,0,0.1)' },
-  current:   { bg: '#fff8e1', border: '#f9a825', shadow: '0 4px 12px rgba(249,168,37,0.4)' },
-  correct:   { bg: '#e8f5e9', border: '#43a047', shadow: '0 2px 8px rgba(67,160,71,0.3)' },
-  incorrect: { bg: '#fce4ec', border: '#e53935', shadow: '0 2px 8px rgba(229,57,53,0.3)' },
+  locked:    { bg: '#f5f5f5', border: '#bdbdbd', shadow: 'none', opacity: 0.45 },
+  pending:   { bg: '#ffffff', border: '#90caf9', shadow: '0 2px 6px rgba(0,0,0,0.1)', opacity: 1 },
+  current:   { bg: '#fff8e1', border: '#f9a825', shadow: '0 4px 12px rgba(249,168,37,0.4)', opacity: 1 },
+  correct:   { bg: '#e8f5e9', border: '#43a047', shadow: '0 2px 8px rgba(67,160,71,0.3)', opacity: 1 },
+  incorrect: { bg: '#fce4ec', border: '#e53935', shadow: '0 2px 8px rgba(229,57,53,0.3)', opacity: 1 },
 };
 
 // ─── Custom Node ────────────────────────────────────────────────────────────
 function MindMapNode({ data }) {
-  const s = STATUS_STYLE[data.status] || STATUS_STYLE.pending;
+  const s = STATUS_STYLE[data.status] || STATUS_STYLE.locked;
   return (
     <div
       style={{
@@ -58,6 +65,7 @@ function MindMapNode({ data }) {
         textAlign: 'center',
         transition: 'all 0.3s',
         cursor: 'default',
+        opacity: s.opacity,
       }}
     >
       <Handle type="target" position={Position.Top} style={{ background: s.border }} />
@@ -67,15 +75,12 @@ function MindMapNode({ data }) {
       <Typography variant="caption" color="text.secondary" display="block">
         {data.points} điểm
       </Typography>
-      {data.status === 'correct' && (
-        <CheckCircleIcon sx={{ color: '#43a047', fontSize: 18, mt: 0.3 }} />
-      )}
-      {data.status === 'incorrect' && (
-        <CancelIcon sx={{ color: '#e53935', fontSize: 18, mt: 0.3 }} />
-      )}
+      {data.status === 'correct' && <CheckCircleIcon sx={{ color: '#43a047', fontSize: 18, mt: 0.3 }} />}
+      {data.status === 'incorrect' && <CancelIcon sx={{ color: '#e53935', fontSize: 18, mt: 0.3 }} />}
       {data.status === 'current' && (
         <Chip label="▶ Hiện tại" size="small" color="warning" sx={{ mt: 0.3, height: 20, fontSize: 10 }} />
       )}
+      {data.status === 'locked' && <LockIcon sx={{ color: '#bdbdbd', fontSize: 16, mt: 0.3 }} />}
       <Handle type="source" position={Position.Bottom} style={{ background: s.border }} />
     </div>
   );
@@ -97,7 +102,6 @@ function buildTree(flatNodes) {
     }
   });
 
-  // Sắp xếp con theo trường order
   Object.values(map).forEach((n) => {
     n.children.sort((a, b) => a.order - b.order);
   });
@@ -132,7 +136,7 @@ function calcPositions(root) {
   return positions;
 }
 
-// ─── DFS (pre-order) lấy danh sách node theo thứ tự duyệt ──────────────────
+// ─── DFS (pre-order) ─────────────────────────────────────────────────────────
 function getDFSOrder(root) {
   const order = [];
   function dfs(node) {
@@ -155,39 +159,31 @@ export default function ExamMindMap() {
   const [loading, setLoading] = useState(true);
 
   // DFS state
-  const [dfsQueue, setDfsQueue] = useState([]);   // IDs còn lại (index 0 = hiện tại)
+  const [dfsOrder, setDfsOrder] = useState([]);
+  const [dfsQueue, setDfsQueue] = useState([]);
   const [nodeStatuses, setNodeStatuses] = useState({});
   const [totalNodes, setTotalNodes] = useState(0);
 
-  // Điểm — dùng ref để tránh closure stale khi submit
+  // Attempt tracking
+  const attemptIdRef = useRef(null);
   const scoreRef = useRef(0);
   const [scoreDisplay, setScoreDisplay] = useState(0);
 
-  // Dialog
+  // Dialog câu hỏi
   const [answer, setAnswer] = useState('');
-  const [answerResult, setAnswerResult] = useState(null); // 'correct' | 'incorrect' | null
+  const [answerResult, setAnswerResult] = useState(null);
+
+  // Dialog tiếp tục làm dở
+  const [continueDialog, setContinueDialog] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(null);
 
   // Kết quả cuối
   const [finished, setFinished] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Khởi tạo / reset bài ─────────────────────────────────────────────────
-  const initExam = useCallback((flatNodes) => {
-    const { root, nodeMap: nm } = buildTree(flatNodes);
-    setNodeMap(nm);
-
-    if (!root) return;
-
-    const positions = calcPositions(root);
-    const dfsOrder = getDFSOrder(root);
-    setTotalNodes(dfsOrder.length);
-
-    const initStatuses = {};
-    flatNodes.forEach((n) => { initStatuses[n.id] = 'pending'; });
-    if (dfsOrder.length > 0) initStatuses[dfsOrder[0]] = 'current';
-
-    // React Flow nodes
+  // ── Khởi tạo mind map (không restore progress) ───────────────────────────
+  const buildMap = useCallback((flatNodes, positions, initStatuses, queue) => {
     setRfNodes(
       flatNodes.map((n) => ({
         id: String(n.id),
@@ -196,8 +192,6 @@ export default function ExamMindMap() {
         data: { label: n.label, points: n.points, status: initStatuses[n.id] },
       }))
     );
-
-    // React Flow edges
     setRfEdges(
       flatNodes
         .filter((n) => n.parentId)
@@ -207,52 +201,141 @@ export default function ExamMindMap() {
           target: String(n.id),
           markerEnd: { type: MarkerType.ArrowClosed, color: '#90caf9' },
           style: { stroke: '#90caf9', strokeWidth: 2 },
-          animated: false,
         }))
     );
-
     setNodeStatuses(initStatuses);
-    setDfsQueue(dfsOrder);
+    setDfsQueue(queue);
+  }, [setRfNodes, setRfEdges]);
 
-    // Reset score
+  const initFresh = useCallback((flatNodes) => {
+    const { root, nodeMap: nm } = buildTree(flatNodes);
+    setNodeMap(nm);
+    if (!root) return;
+
+    const positions = calcPositions(root);
+    const order = getDFSOrder(root);
+    setDfsOrder(order);
+    setTotalNodes(order.length);
+
+    const initStatuses = {};
+    flatNodes.forEach((n) => { initStatuses[n.id] = 'locked'; });
+    if (order.length > 0) initStatuses[order[0]] = 'current';
+
     scoreRef.current = 0;
     setScoreDisplay(0);
     setAnswer('');
     setAnswerResult(null);
     setFinished(false);
     setSubmitResult(null);
-  }, [setRfNodes, setRfEdges]);
 
-  // ── Fetch dữ liệu bài thi ────────────────────────────────────────────────
+    buildMap(flatNodes, positions, initStatuses, order);
+  }, [buildMap]);
+
+  const restoreProgress = useCallback((flatNodes, nodeAnswers) => {
+    const { root, nodeMap: nm } = buildTree(flatNodes);
+    setNodeMap(nm);
+    if (!root) return;
+
+    const positions = calcPositions(root);
+    const order = getDFSOrder(root);
+    setDfsOrder(order);
+    setTotalNodes(order.length);
+
+    // Tập nodeId đã trả lời
+    const answeredMap = {};
+    nodeAnswers.forEach((na) => { answeredMap[na.nodeId] = na; });
+    const answeredIds = new Set(nodeAnswers.map((na) => na.nodeId));
+
+    // Tính lại điểm từ progress
+    let restoredScore = 0;
+    flatNodes.forEach((n) => {
+      if (answeredMap[n.id]?.isCorrect) restoredScore += n.points;
+    });
+    scoreRef.current = restoredScore;
+    setScoreDisplay(restoredScore);
+
+    // Tìm node kế tiếp chưa trả lời theo DFS
+    const remainingQueue = order.filter((nid) => !answeredIds.has(nid));
+
+    const initStatuses = {};
+    flatNodes.forEach((n) => { initStatuses[n.id] = 'locked'; });
+    nodeAnswers.forEach((na) => {
+      initStatuses[na.nodeId] = na.isCorrect ? 'correct' : 'incorrect';
+    });
+    if (remainingQueue.length > 0) initStatuses[remainingQueue[0]] = 'current';
+
+    setAnswer('');
+    setAnswerResult(null);
+    setFinished(false);
+    setSubmitResult(null);
+
+    buildMap(flatNodes, positions, initStatuses, remainingQueue);
+  }, [buildMap]);
+
+  // ── Fetch dữ liệu & kiểm tra progress ───────────────────────────────────
   useEffect(() => {
-    api
-      .get(`/api/exams/${id}`)
-      .then(({ data }) => {
-        setExam(data);
-        initExam(data.nodes);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [id, initExam]);
+    const init = async () => {
+      try {
+        const { data: examData } = await api.get(`/api/exams/${id}`);
+        setExam(examData);
 
-  // ── Cập nhật màu node khi statuses thay đổi ──────────────────────────────
+        const progressRes = await api.get(`/api/attempts/progress?examId=${id}`);
+        const progress = progressRes.data;
+
+        if (progress && progress.nodeAnswers?.length > 0) {
+          setSavedProgress(progress);
+          setContinueDialog(true);
+          // Hiển thị map nhưng chưa init cho đến khi user chọn
+          initFresh(examData.nodes);
+        } else {
+          // Bắt đầu mới
+          const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
+          attemptIdRef.current = startData.attemptId;
+          initFresh(examData.nodes);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, [id, initFresh]);
+
+  // ── Cập nhật màu node ────────────────────────────────────────────────────
   useEffect(() => {
     setRfNodes((prev) =>
       prev.map((n) => ({
         ...n,
-        data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'pending' },
+        data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'locked' },
       }))
     );
   }, [nodeStatuses, setRfNodes]);
 
+  // ── Xử lý chọn tiếp tục hay làm mới ────────────────────────────────────
+  const handleContinueChoice = async (continueOld) => {
+    setContinueDialog(false);
+    if (continueOld && savedProgress) {
+      attemptIdRef.current = savedProgress.attemptId;
+      restoreProgress(exam.nodes, savedProgress.nodeAnswers);
+    } else {
+      const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
+      attemptIdRef.current = startData.attemptId;
+      initFresh(exam.nodes);
+    }
+    setSavedProgress(null);
+  };
+
   // ── Xử lý trả lời ───────────────────────────────────────────────────────
   const currentNodeId = dfsQueue[0] ?? null;
   const currentNode = currentNodeId ? nodeMap[currentNodeId] : null;
+  const hasOptions = Array.isArray(currentNode?.options) && currentNode.options.length > 0;
 
-  const handleAnswer = () => {
+  const handleAnswer = async () => {
     if (!currentNode || !answer.trim()) return;
 
     const correct =
+      answer.trim().toUpperCase() === currentNode.correctAnswer.trim().toUpperCase() ||
       answer.trim().toLowerCase() === currentNode.correctAnswer.trim().toLowerCase();
 
     if (correct) {
@@ -264,6 +347,16 @@ export default function ExamMindMap() {
     }
 
     setAnswerResult(correct ? 'correct' : 'incorrect');
+
+    // Lưu câu trả lời lên server
+    if (attemptIdRef.current) {
+      api.post('/api/attempts/answer', {
+        attemptId: attemptIdRef.current,
+        nodeId: currentNodeId,
+        answer: answer.trim(),
+        isCorrect: correct,
+      }).catch(console.error);
+    }
   };
 
   // ── Tiếp tục sang node kế tiếp ──────────────────────────────────────────
@@ -277,34 +370,41 @@ export default function ExamMindMap() {
       const nextId = remaining[0];
       setNodeStatuses((prev) => ({ ...prev, [nextId]: 'current' }));
     } else {
-      // Hết node → nộp bài
       setFinished(true);
-      submitScore(scoreRef.current);
+      completeAttempt(scoreRef.current);
     }
   };
 
-  // ── Submit kết quả lên server ────────────────────────────────────────────
-  const submitScore = async (finalScore) => {
+  // ── Hoàn thành bài ──────────────────────────────────────────────────────
+  const completeAttempt = async (finalScore) => {
     setSubmitting(true);
     try {
-      const { data } = await api.post('/api/attempts/submit', {
-        examId: parseInt(id),
-        score: finalScore,
-      });
-      setSubmitResult(data);
+      if (attemptIdRef.current) {
+        const { data } = await api.post('/api/attempts/complete', {
+          attemptId: attemptIdRef.current,
+          score: finalScore,
+        });
+        setSubmitResult(data);
+      }
     } catch (err) {
-      console.error('Submit error:', err);
+      console.error('Complete error:', err);
     } finally {
       setSubmitting(false);
     }
   };
 
   // ── Reset bài ────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    if (exam) initExam(exam.nodes);
+  const handleReset = async () => {
+    if (!exam) return;
+    try {
+      const { data } = await api.post('/api/attempts/start', { examId: parseInt(id) });
+      attemptIdRef.current = data.attemptId;
+      initFresh(exam.nodes);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // ── Progress ─────────────────────────────────────────────────────────────
   const progress =
     totalNodes > 0
       ? Math.round(((totalNodes - dfsQueue.length) / totalNodes) * 100)
@@ -324,34 +424,19 @@ export default function ExamMindMap() {
 
       {/* Info bar */}
       <Paper elevation={1} square sx={{ px: 3, py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/student')}
-          variant="outlined"
-        >
+        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/student')} variant="outlined">
           Quay lại
         </Button>
         <Typography variant="subtitle1" fontWeight="bold" sx={{ flex: 1, minWidth: 150 }}>
           {exam?.title}
         </Typography>
         <Chip label={`Điểm: ${scoreDisplay}`} color="primary" variant="outlined" />
-        <Chip
-          label={`${totalNodes - dfsQueue.length}/${totalNodes} node`}
-          color="secondary"
-          variant="outlined"
-        />
-        <Button
-          size="small"
-          startIcon={<ReplayIcon />}
-          onClick={handleReset}
-          variant="text"
-        >
+        <Chip label={`${totalNodes - dfsQueue.length}/${totalNodes} node`} color="secondary" variant="outlined" />
+        <Button size="small" startIcon={<ReplayIcon />} onClick={handleReset} variant="text">
           Làm lại
         </Button>
       </Paper>
 
-      {/* Progress bar */}
       <LinearProgress
         variant="determinate"
         value={progress}
@@ -359,7 +444,6 @@ export default function ExamMindMap() {
         color={progress === 100 ? 'success' : 'primary'}
       />
 
-      {/* React Flow canvas */}
       <Box sx={{ flex: 1 }}>
         <ReactFlow
           nodes={rfNodes}
@@ -381,9 +465,32 @@ export default function ExamMindMap() {
         </ReactFlow>
       </Box>
 
-      {/* ── Dialog câu hỏi ─────────────────────────────────────────────────── */}
+      {/* ── Dialog tiếp tục hay làm mới ─────────────────────────────────── */}
+      <Dialog open={continueDialog} maxWidth="xs" fullWidth disableEscapeKeyDown>
+        <DialogTitle sx={{ textAlign: 'center' }}>
+          <PlayArrowIcon sx={{ fontSize: 40, color: '#1565c0' }} />
+          <Typography variant="h6" fontWeight="bold" sx={{ mt: 1 }}>
+            Bài đang làm dở
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            Bạn có bài làm chưa hoàn thành. Bạn muốn tiếp tục hay bắt đầu lại từ đầu?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
+          <Button variant="outlined" onClick={() => handleContinueChoice(false)}>
+            Làm lại từ đầu
+          </Button>
+          <Button variant="contained" onClick={() => handleContinueChoice(true)} autoFocus>
+            Tiếp tục
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Dialog câu hỏi ─────────────────────────────────────────────── */}
       <Dialog
-        open={!finished && dfsQueue.length > 0}
+        open={!finished && !continueDialog && dfsQueue.length > 0}
         maxWidth="sm"
         fullWidth
         disableEscapeKeyDown
@@ -393,11 +500,7 @@ export default function ExamMindMap() {
             <Typography variant="h6" sx={{ flex: 1 }}>
               {currentNode?.label}
             </Typography>
-            <Chip
-              label={`+${currentNode?.points} điểm`}
-              color="primary"
-              size="small"
-            />
+            <Chip label={`+${currentNode?.points} điểm`} color="primary" size="small" />
             <Chip
               label={`${totalNodes - dfsQueue.length + 1}/${totalNodes}`}
               variant="outlined"
@@ -412,24 +515,46 @@ export default function ExamMindMap() {
           </Typography>
 
           {answerResult === null && (
-            <TextField
-              fullWidth
-              label="Câu trả lời của bạn"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAnswer()}
-              autoFocus
-              key={currentNodeId}
-              placeholder="Nhập câu trả lời rồi nhấn Enter hoặc Trả lời..."
-            />
+            hasOptions ? (
+              <FormControl fullWidth>
+                <RadioGroup
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                >
+                  {currentNode.options.map((opt, i) => (
+                    <FormControlLabel
+                      key={i}
+                      value={opt.charAt(0)}
+                      control={<Radio />}
+                      label={opt}
+                      sx={{
+                        mb: 0.5,
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        mx: 0,
+                        px: 1,
+                        '&:hover': { bgcolor: '#f5f5f5' },
+                      }}
+                    />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            ) : (
+              <TextField
+                fullWidth
+                label="Câu trả lời của bạn"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAnswer()}
+                autoFocus
+                key={currentNodeId}
+                placeholder="Nhập câu trả lời rồi nhấn Enter hoặc Trả lời..."
+              />
+            )
           )}
 
           {answerResult === 'correct' && (
-            <Alert
-              severity="success"
-              icon={<CheckCircleIcon />}
-              sx={{ fontSize: '1rem' }}
-            >
+            <Alert severity="success" icon={<CheckCircleIcon />} sx={{ fontSize: '1rem' }}>
               <strong>Chính xác!</strong> Bạn nhận được <strong>+{currentNode?.points} điểm</strong>.
             </Alert>
           )}
@@ -437,7 +562,12 @@ export default function ExamMindMap() {
           {answerResult === 'incorrect' && (
             <Box>
               <Alert severity="error" sx={{ mb: 1.5 }}>
-                <strong>Chưa đúng!</strong> Đáp án của bạn: <em>{answer}</em>
+                <strong>Chưa đúng!</strong> Đáp án đúng là:{' '}
+                <strong>
+                  {hasOptions
+                    ? currentNode.options.find((o) => o.startsWith(currentNode.correctAnswer)) || currentNode.correctAnswer
+                    : currentNode?.correctAnswer}
+                </strong>
               </Alert>
               {currentNode?.hint && (
                 <Alert severity="info" icon={<LightbulbIcon />}>
@@ -473,7 +603,7 @@ export default function ExamMindMap() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Dialog kết quả ─────────────────────────────────────────────────── */}
+      {/* ── Dialog kết quả ─────────────────────────────────────────────── */}
       <Dialog open={finished} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
           <EmojiEventsIcon sx={{ fontSize: 56, color: '#f9a825' }} />
@@ -486,9 +616,7 @@ export default function ExamMindMap() {
           {submitting ? (
             <Box sx={{ textAlign: 'center', py: 3 }}>
               <CircularProgress />
-              <Typography sx={{ mt: 2 }} color="text.secondary">
-                Đang lưu kết quả...
-              </Typography>
+              <Typography sx={{ mt: 2 }} color="text.secondary">Đang lưu kết quả...</Typography>
             </Box>
           ) : submitResult ? (
             <Box sx={{ textAlign: 'center', py: 1 }}>
@@ -498,7 +626,6 @@ export default function ExamMindMap() {
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Điểm lần này
               </Typography>
-
               <Box sx={{ mt: 2, p: 2, bgcolor: '#f3e5f5', borderRadius: 2 }}>
                 <Typography variant="h4" color="secondary" fontWeight="bold">
                   {submitResult.avgScore}
@@ -507,27 +634,15 @@ export default function ExamMindMap() {
                   Điểm trung bình ({submitResult.attemptCount} lần làm)
                 </Typography>
               </Box>
-
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1.5 }}>
-                avg = tổng điểm / số lần làm
-              </Typography>
             </Box>
           ) : null}
         </DialogContent>
 
         <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/student')}
-          >
+          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/student')}>
             Về trang chủ
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<ReplayIcon />}
-            onClick={handleReset}
-          >
+          <Button variant="contained" startIcon={<ReplayIcon />} onClick={handleReset}>
             Làm lại từ đầu
           </Button>
         </DialogActions>

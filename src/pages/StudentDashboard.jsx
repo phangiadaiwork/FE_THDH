@@ -16,12 +16,14 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SchoolIcon from '@mui/icons-material/School';
+import ContinueIcon from '@mui/icons-material/PlayCircle';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
 function StudentDashboard() {
   const [exams, setExams] = useState([]);
   const [myAttempts, setMyAttempts] = useState({});
+  const [inProgressIds, setInProgressIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -38,12 +40,10 @@ function StudentDashboard() {
         ]);
         setExams(examsRes.data);
 
-        // Tạo map examId -> avgScore
         const avgMap = {};
         attemptsRes.data.avgByExam && Object.entries(attemptsRes.data.avgByExam).forEach(([eid, avg]) => {
           avgMap[parseInt(eid)] = avg;
         });
-        // Đếm số lần làm theo examId
         const countMap = {};
         if (attemptsRes.data.attempts) {
           attemptsRes.data.attempts.forEach((a) => {
@@ -51,6 +51,10 @@ function StudentDashboard() {
           });
         }
         setMyAttempts({ avg: avgMap, count: countMap });
+
+        if (attemptsRes.data.inProgressExamIds) {
+          setInProgressIds(new Set(attemptsRes.data.inProgressExamIds));
+        }
       } catch (err) {
         setError('Không thể tải dữ liệu. Vui lòng thử lại.');
         console.error(err);
@@ -98,9 +102,7 @@ function StudentDashboard() {
         {loading ? (
           <Box sx={{ textAlign: 'center', mt: 8 }}>
             <CircularProgress />
-            <Typography sx={{ mt: 2 }} color="text.secondary">
-              Đang tải bài tập...
-            </Typography>
+            <Typography sx={{ mt: 2 }} color="text.secondary">Đang tải bài tập...</Typography>
           </Box>
         ) : exams.length === 0 ? (
           <Box sx={{ textAlign: 'center', mt: 6 }}>
@@ -114,6 +116,8 @@ function StudentDashboard() {
             {exams.map((exam) => {
               const attemptCount = myAttempts.count?.[exam.id] || 0;
               const avgScore = myAttempts.avg?.[exam.id];
+              const isInProgress = inProgressIds.has(exam.id);
+
               return (
                 <Grid item xs={12} sm={6} md={4} key={exam.id}>
                   <Card
@@ -125,8 +129,24 @@ function StudentDashboard() {
                       flexDirection: 'column',
                       transition: 'transform 0.2s, box-shadow 0.2s',
                       '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                      position: 'relative',
+                      overflow: 'visible',
                     }}
                   >
+                    {isInProgress && (
+                      <Chip
+                        label="Đang làm dở"
+                        color="warning"
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: -10,
+                          right: 12,
+                          fontWeight: 'bold',
+                          fontSize: 11,
+                        }}
+                      />
+                    )}
                     <CardContent sx={{ flex: 1 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
                         <AccountTreeIcon color="primary" sx={{ mt: 0.3 }} />
@@ -141,7 +161,7 @@ function StudentDashboard() {
                         )}
                       </Box>
                       {attemptCount > 0 && (
-                        <Box sx={{ mt: 1.5, p: 1, bgcolor: 'primary.50', borderRadius: 1, bgcolor: '#e3f2fd' }}>
+                        <Box sx={{ mt: 1.5, p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
                           <Typography variant="caption" color="primary.main" fontWeight="bold">
                             Đã làm {attemptCount} lần • Điểm TB: {avgScore}
                           </Typography>
@@ -151,11 +171,12 @@ function StudentDashboard() {
                     <CardActions sx={{ p: 2, pt: 0 }}>
                       <Button
                         variant="contained"
-                        startIcon={<PlayArrowIcon />}
+                        startIcon={isInProgress ? <ContinueIcon /> : <PlayArrowIcon />}
                         onClick={() => navigate(`/student/exam/${exam.id}`)}
                         fullWidth
+                        color={isInProgress ? 'warning' : 'primary'}
                       >
-                        {attemptCount > 0 ? 'Làm lại' : 'Bắt đầu'}
+                        {isInProgress ? 'Tiếp tục' : attemptCount > 0 ? 'Làm lại' : 'Bắt đầu'}
                       </Button>
                     </CardActions>
                   </Card>
