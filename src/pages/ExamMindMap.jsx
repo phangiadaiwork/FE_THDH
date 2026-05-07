@@ -417,13 +417,18 @@ export default function ExamMindMap() {
   // ── Làm lại ───────────────────────────────────────────────────────────────
   const handleReset = async () => {
     if (!exam) return;
+    // Reset dialog kết quả ngay lập tức
+    setFinished(false);
+    setSubmitResult(null);
     setResetting(true);
     try {
       const { data } = await api.post('/api/attempts/start', { examId: parseInt(id) });
       attemptIdRef.current = data.attemptId;
       initFresh(exam.nodes);
     } catch (err) {
-      console.error(err);
+      console.error('Reset error:', err);
+      setFinished(false);
+      setSubmitResult(null);
     } finally {
       setResetting(false);
     }
@@ -570,6 +575,7 @@ export default function ExamMindMap() {
         fullWidth
         fullScreen={isMobile}
         transitionDuration={{ enter: 150, exit: 100 }}
+        PaperProps={{ sx: { position: 'relative' } }}
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -653,12 +659,16 @@ export default function ExamMindMap() {
                 placeholder="Nhập câu trả lời rồi nhấn Enter..."
                 disabled={actionBusy}
                 name={`essay-answer-${dialogNodeId ?? 'current'}`}
-                autoComplete="new-password"
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
                 inputProps={{
-                  autoComplete: 'new-password',
+                  autoComplete: 'off',
                   spellCheck: false,
                   autoCorrect: 'off',
                   autoCapitalize: 'none',
+                  'data-1p-ignore': 'true',
+                  'data-lpignore': 'true',
                 }}
               />
             )
@@ -805,10 +815,31 @@ export default function ExamMindMap() {
             </Button>
           )}
         </DialogActions>
+
+        {/* Loading overlay */}
+        {actionBusy && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(255, 255, 255, 0.85)',
+              zIndex: 10,
+              borderRadius: '4px',
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        )}
       </Dialog>
 
       {/* ── Dialog kết quả ────────────────────────────────────────────────── */}
-      <Dialog open={finished} maxWidth="xs" fullWidth>
+      <Dialog open={finished} maxWidth="xs" fullWidth PaperProps={{ sx: { position: 'relative' } }}>
         <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
           <EmojiEventsIcon sx={{ fontSize: 56, color: '#f9a825' }} />
           <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
@@ -841,7 +872,7 @@ export default function ExamMindMap() {
             variant="outlined"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/student')}
-            disabled={submitting || !submitResult}
+            disabled={submitting || resetting || !submitResult}
           >
             Về trang chủ
           </Button>
@@ -849,11 +880,37 @@ export default function ExamMindMap() {
             variant="contained"
             startIcon={<ReplayIcon />}
             onClick={handleReset}
-            disabled={submitting || !submitResult}
+            disabled={submitting || resetting || !submitResult}
           >
             Làm lại từ đầu
           </Button>
         </DialogActions>
+
+        {/* Loading overlay - full dialog */}
+        {(submitting || resetting) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(255, 255, 255, 0.85)',
+              zIndex: 10,
+              borderRadius: '4px',
+            }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={50} />
+              <Typography sx={{ mt: 2 }} color="text.secondary">
+                {resetting ? 'Đang tạo lại bài thi...' : 'Đang lưu kết quả...'}
+              </Typography>
+            </Box>
+          </Box>
+        )}
       </Dialog>
     </Box>
   );
