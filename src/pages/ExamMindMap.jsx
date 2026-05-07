@@ -759,15 +759,7 @@ export default function ExamMindMap() {
               </IconButton>
             </Tooltip>
           )}
-          <Tooltip title="Về kích cỡ mặc định" placement="left">
-            <IconButton
-              onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
-              sx={{ bgcolor: 'white', boxShadow: 2, '&:hover': { bgcolor: '#f5f5f5' } }}
-              size="small"
-            >
-              <ZoomOutMapIcon color="action" />
-            </IconButton>
-          </Tooltip>
+
         </Box>
       </Box>
 
