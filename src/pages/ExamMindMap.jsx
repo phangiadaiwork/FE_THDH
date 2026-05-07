@@ -885,6 +885,7 @@ export default function ExamMindMap() {
                   correctAnswer={dialogNode.correctAnswer}
                   chosenAnswer={reviewData?.answer}
                   readOnly
+                  sx ={{ mb: 2 }}
                 />
               )}
                  {reviewData?.isCorrect ? (
