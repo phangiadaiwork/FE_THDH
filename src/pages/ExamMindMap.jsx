@@ -396,7 +396,6 @@ export default function ExamMindMap() {
       setDialogNodeId(nextId);
     } else {
       setDialogNodeId(null);
-      setFinished(true);
     }
   }, [dfsQueue, answerResult, actionBusy, applyNodeStatus]);
 
@@ -679,13 +678,13 @@ export default function ExamMindMap() {
           {isAnswerMode && answerResult !== null && (
             <>
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>Xem sơ đồ</Button>
-              <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy || dfsQueue.length <= 1} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>Câu tiếp theo</Button>
+              <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>{dfsQueue.length <= 1 ? 'Nộp bài' : 'Câu tiếp theo'}</Button>
             </>
           )}
           {isReviewMode && dialogNodeId === currentQueueNodeId && (
             <>
               <Button variant="outlined" onClick={handleCloseAndFocus} disabled={actionBusy}>Xem sơ đồ</Button>
-              <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy || dfsQueue.length <= 1} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>Câu tiếp theo</Button>
+              <Button variant="contained" onClick={handleContinue} size="large" sx={{ flex:1 }} disabled={actionBusy} endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}>{dfsQueue.length <= 1 ? 'Nộp bài' : 'Câu tiếp theo'}</Button>
             </>
           )}
           {isReviewMode && dialogNodeId !== currentQueueNodeId && (
