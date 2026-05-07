@@ -453,6 +453,17 @@ export default function ExamMindMap() {
     }
   }, [focusCurrentRequested, dialogNodeId, handleGoToCurrent]);
 
+  // ── Auto-unlock next node khi trả lời xong ─────────────────────────────────
+  useEffect(() => {
+    if (answerResult !== null && dfsQueue.length > 1) {
+      const nextNodeId = dfsQueue[1];
+      setNodeStatuses((prev) => ({
+        ...prev,
+        [nextNodeId]: 'current',
+      }));
+    }
+  }, [answerResult, dfsQueue]);
+
   const handleCloseAndFocus = useCallback(() => {
     setFocusCurrentRequested(true);
     closeDialog();
@@ -575,7 +586,6 @@ export default function ExamMindMap() {
         fullWidth
         fullScreen={isMobile}
         transitionDuration={{ enter: 150, exit: 100 }}
-        PaperProps={{ sx: { position: 'relative' } }}
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -770,8 +780,9 @@ export default function ExamMindMap() {
                 disabled={!answer.trim() || actionBusy}
                 size="large"
                 sx={{ flex: 1 }}
+                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
               >
-                {answerPending ? 'Đang xử lý...' : 'Trả lời'}
+                {answerPending ? 'Đang xử lý' : 'Trả lời'}
               </Button>
             </>
           )}
@@ -787,8 +798,9 @@ export default function ExamMindMap() {
                 sx={{ flex: 1 }}
                 color={dfsQueue.length > 1 ? 'primary' : 'success'}
                 disabled={actionBusy}
+                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
               >
-                {dfsQueue.length > 1 ? 'Câu tiếp theo →' : 'Nộp bài'}
+                {dfsQueue.length > 1 ? 'Câu tiếp theo' : 'Nộp bài'}
               </Button>
             </>
           )}
@@ -804,8 +816,9 @@ export default function ExamMindMap() {
                 sx={{ flex: 1 }}
                 color={dfsQueue.length > 1 ? 'primary' : 'success'}
                 disabled={actionBusy}
+                endIcon={actionBusy ? <CircularProgress size={20} /> : undefined}
               >
-                {dfsQueue.length > 1 ? 'Câu tiếp theo →' : 'Nộp bài'}
+                {dfsQueue.length > 1 ? 'Câu tiếp theo' : 'Nộp bài'}
               </Button>
             </>
           )}
@@ -815,27 +828,6 @@ export default function ExamMindMap() {
             </Button>
           )}
         </DialogActions>
-
-        {/* Loading overlay */}
-        {actionBusy && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(255, 255, 255, 0.85)',
-              zIndex: 10,
-              borderRadius: '4px',
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        )}
       </Dialog>
 
       {/* ── Dialog kết quả ────────────────────────────────────────────────── */}
@@ -878,7 +870,8 @@ export default function ExamMindMap() {
           </Button>
           <Button
             variant="contained"
-            startIcon={<ReplayIcon />}
+            startIcon={resetting ? undefined : <ReplayIcon />}
+            endIcon={resetting ? <CircularProgress size={20} /> : undefined}
             onClick={handleReset}
             disabled={submitting || resetting || !submitResult}
           >
@@ -887,7 +880,7 @@ export default function ExamMindMap() {
         </DialogActions>
 
         {/* Loading overlay - full dialog */}
-        {(submitting || resetting) && (
+        {submitting && (
           <Box
             sx={{
               position: 'absolute',
@@ -906,7 +899,7 @@ export default function ExamMindMap() {
             <Box sx={{ textAlign: 'center' }}>
               <CircularProgress size={50} />
               <Typography sx={{ mt: 2 }} color="text.secondary">
-                {resetting ? 'Đang tạo lại bài thi...' : 'Đang lưu kết quả...'}
+                Đang lưu kết quả...
               </Typography>
             </Box>
           </Box>
