@@ -1,73 +1,69 @@
-import { useState, useCallback, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
-  Controls,
   Background,
-  useNodesState,
-  useEdgesState,
-  MarkerType,
+  Controls,
   Handle,
+  MarkerType,
   Position,
+  useEdgesState,
+  useNodesState,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
   Alert,
-  Divider,
+  Box,
+  Button,
   Chip,
+  Divider,
+  FormControl,
+  Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Switch,
+  TextField,
   Tooltip,
+  Typography,
   CircularProgress,
   FormControlLabel,
-  Switch,
-  Stack,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
-// ─── Custom node cho editor ─────────────────────────────────────────────────
+const GRADE_OPTIONS = ['10', '11', '12'];
+
 function EditorNode({ data, selected }) {
   return (
     <div
       style={{
-        background: selected ? '#e3f2fd' : '#fff',
-        border: `2px solid ${selected ? '#1565c0' : '#90caf9'}`,
-        borderRadius: 10,
+        background: selected ? '#fff3dd' : '#fff',
+        border: `2px solid ${selected ? '#8c5c22' : '#d4a256'}`,
+        borderRadius: 14,
         padding: '10px 14px',
-        minWidth: 130,
-        maxWidth: 190,
+        minWidth: 150,
+        maxWidth: 210,
         textAlign: 'center',
-        boxShadow: selected ? '0 4px 12px rgba(21,101,192,0.35)' : '0 2px 6px rgba(0,0,0,0.1)',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
+        boxShadow: selected ? '0 8px 24px rgba(140,92,34,0.25)' : '0 4px 16px rgba(0,0,0,0.08)',
       }}
     >
       <Handle type="target" position={Position.Top} />
-      <Typography variant="caption" fontWeight="bold" display="block">
-        {data.label || '(chưa đặt tên)'}
+      <Typography variant="body2" fontWeight={700}>
+        {data.label || 'Node mới'}
       </Typography>
       <Typography variant="caption" color="text.secondary" display="block">
         {data.points} điểm
       </Typography>
-      {data.isMultiChoice && (
-        <Chip label="Trắc nghiệm" size="small" color="info" sx={{ mt: 0.3, height: 18, fontSize: 10 }} />
-      )}
-      {data.question ? (
-        <Chip label="Có câu hỏi" size="small" color="success" sx={{ mt: 0.3, height: 18, fontSize: 10 }} />
-      ) : (
-        <Chip label="Chưa có câu hỏi" size="small" color="error" sx={{ mt: 0.3, height: 18, fontSize: 10 }} />
-      )}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -75,12 +71,18 @@ function EditorNode({ data, selected }) {
 
 const nodeTypes = { editorNode: EditorNode };
 
-const EMPTY_FORM = { label: '', question: '', options: ['', '', '', ''], correctAnswer: '', hint: '', points: 1, isMultiChoice: false };
+const EMPTY_FORM = {
+  label: '',
+  question: '',
+  options: ['', '', '', ''],
+  correctAnswer: '',
+  hint: '',
+  points: 1,
+  isMultiChoice: false,
+};
 
-// ────────────────────────────────────────────────────────────────────────────
 export default function CreateExam() {
   const navigate = useNavigate();
-  const [title, setTitle] = useState('');
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -88,118 +90,182 @@ export default function CreateExam() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [importing, setImporting] = useState(false);
+
+  const [gradeLevel, setGradeLevel] = useState('12');
+  const [chapterTitle, setChapterTitle] = useState('Chương VI');
+  const [chapterCode, setChapterCode] = useState('chuong-vi');
+  const [chapterDisplayOrder, setChapterDisplayOrder] = useState(6);
+  const [lessonNumber, setLessonNumber] = useState(18);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [exerciseTitle, setExerciseTitle] = useState('Bài tập');
+  const [theoryContent, setTheoryContent] = useState('');
+
   const fileInputRef = useRef(null);
-  const labelFieldRef = useRef(null);
   const idCounter = useRef(1);
 
-  const selectedNode = rfNodes.find((n) => n.id === selectedId);
+  const selectedNode = rfNodes.find((node) => node.id === selectedId);
 
-  // Auto-focus nhãn khi chọn / tạo node
-  const focusLabel = useCallback(() => {
-    setTimeout(() => labelFieldRef.current?.focus(), 30);
-  }, []);
-
-  // ── Thêm node gốc ───────────────────────────────────────────────────────
   const addRootNode = () => {
     const id = String(idCounter.current++);
-    setRfNodes([{
-      id,
-      type: 'editorNode',
-      position: { x: 300, y: 50 },
-      data: { label: '', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
-    }]);
+    setRfNodes([
+      {
+        id,
+        type: 'editorNode',
+        position: { x: 340, y: 60 },
+        data: { ...EMPTY_FORM, points: 1 },
+      },
+    ]);
     setRfEdges([]);
     setSelectedId(id);
-    setForm({ ...EMPTY_FORM, label: '' });
-    focusLabel();
+    setForm(EMPTY_FORM);
   };
 
-  // ── Thêm node con ────────────────────────────────────────────────────────
   const addChildNode = () => {
     if (!selectedId) return;
-    const parent = rfNodes.find((n) => n.id === selectedId);
+    const parent = rfNodes.find((node) => node.id === selectedId);
     if (!parent) return;
 
-    const siblingCount = rfEdges.filter((e) => e.source === selectedId).length;
+    const siblingCount = rfEdges.filter((edge) => edge.source === selectedId).length;
     const id = String(idCounter.current++);
 
-    setRfNodes((prev) => [...prev, {
-      id,
-      type: 'editorNode',
-      position: {
-        x: parent.position.x + (siblingCount - Math.floor(siblingCount / 2)) * 220 - 90,
-        y: parent.position.y + 140,
+    setRfNodes((prev) => [
+      ...prev,
+      {
+        id,
+        type: 'editorNode',
+        position: {
+          x: parent.position.x + (siblingCount - Math.floor(siblingCount / 2)) * 220,
+          y: parent.position.y + 150,
+        },
+        data: { ...EMPTY_FORM, points: 1 },
       },
-      data: { label: '', question: '', options: null, correctAnswer: '', hint: '', points: 1, isMultiChoice: false },
-    }]);
-    setRfEdges((prev) => [...prev, {
-      id: `e${selectedId}-${id}`,
-      source: selectedId,
-      target: id,
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#90caf9' },
-      style: { stroke: '#90caf9', strokeWidth: 2 },
-    }]);
+    ]);
+
+    setRfEdges((prev) => [
+      ...prev,
+      {
+        id: `e${selectedId}-${id}`,
+        source: selectedId,
+        target: id,
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#d4a256' },
+        style: { stroke: '#d4a256', strokeWidth: 2 },
+      },
+    ]);
+
     setSelectedId(id);
-    setForm({ ...EMPTY_FORM, label: '' });
-    focusLabel();
+    setForm(EMPTY_FORM);
   };
 
-  // ── Xóa node được chọn ──────────────────────────────────────────────────
   const deleteSelectedNode = () => {
     if (!selectedId) return;
+
     const descendants = new Set();
     const queue = [selectedId];
     while (queue.length > 0) {
-      const nid = queue.shift();
-      descendants.add(nid);
-      rfEdges.filter((e) => e.source === nid).forEach((e) => queue.push(e.target));
+      const currentId = queue.shift();
+      descendants.add(currentId);
+      rfEdges
+        .filter((edge) => edge.source === currentId)
+        .forEach((edge) => queue.push(edge.target));
     }
-    setRfNodes((prev) => prev.filter((n) => !descendants.has(n.id)));
-    setRfEdges((prev) => prev.filter((e) => !descendants.has(e.source) && !descendants.has(e.target)));
+
+    setRfNodes((prev) => prev.filter((node) => !descendants.has(node.id)));
+    setRfEdges((prev) => prev.filter((edge) => !descendants.has(edge.source) && !descendants.has(edge.target)));
     setSelectedId(null);
     setForm(EMPTY_FORM);
   };
 
-  // ── Chọn node ────────────────────────────────────────────────────────────
-  const onNodeClick = useCallback((_event, node) => {
-    setSelectedId(node.id);
-    setForm({
-      label: node.data.label || '',
-      question: node.data.question || '',
-      options: node.data.options || ['', '', '', ''],
-      correctAnswer: node.data.correctAnswer || '',
-      hint: node.data.hint || '',
-      points: node.data.points || 1,
-      isMultiChoice: node.data.isMultiChoice || false,
-    });
-    focusLabel();
-  }, [focusLabel]);
-
-  const onPaneClick = useCallback(() => { setSelectedId(null); }, []);
-
-  // ── Cập nhật form → node data ────────────────────────────────────────────
   const updateForm = (field, value) => {
-    const updated = { ...form, [field]: value };
-    setForm(updated);
-    if (selectedId) {
-      setRfNodes((prev) =>
-        prev.map((n) => n.id === selectedId ? { ...n, data: { ...updated } } : n)
-      );
-    }
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+    setRfNodes((prev) =>
+      prev.map((node) => (node.id === selectedId ? { ...node, data: { ...nextForm } } : node))
+    );
   };
 
   const updateOption = (index, value) => {
-    const opts = [...(form.options || ['', '', '', ''])];
-    opts[index] = value;
-    updateForm('options', opts);
+    const options = [...form.options];
+    options[index] = value;
+    updateForm('options', options);
   };
 
-  // ── Tải template Excel bài tập ───────────────────────────────────────────
+  const saveExam = async () => {
+    setSaveError('');
+
+    if (!lessonTitle.trim()) {
+      setSaveError('Cần nhập tên bài học.');
+      return;
+    }
+    if (rfNodes.length === 0) {
+      setSaveError('Cần ít nhất một node.');
+      return;
+    }
+
+    const invalidNodes = rfNodes.filter((node) => !node.data.question || !node.data.correctAnswer);
+    if (invalidNodes.length > 0) {
+      setSaveError('Tất cả node cần có câu hỏi và đáp án đúng.');
+      return;
+    }
+
+    const parentMap = {};
+    rfEdges.forEach((edge) => {
+      parentMap[edge.target] = edge.source;
+    });
+    const childMap = {};
+    rfEdges.forEach((edge) => {
+      if (!childMap[edge.source]) childMap[edge.source] = [];
+      childMap[edge.source].push(edge.target);
+    });
+
+    const nodes = rfNodes.map((node) => {
+      const parentTempId = parentMap[node.id] || null;
+      const siblings = parentTempId ? childMap[parentTempId] || [] : [];
+      const options = node.data.isMultiChoice
+        ? node.data.options
+            .filter((option) => option.trim())
+            .map((option, index) => `${['A', 'B', 'C', 'D'][index]}. ${option}`)
+        : null;
+
+      return {
+        tempId: node.id,
+        parentTempId,
+        label: node.data.label,
+        question: node.data.question,
+        options,
+        correctAnswer: node.data.correctAnswer,
+        hint: node.data.hint,
+        points: Number(node.data.points) || 1,
+        order: siblings.indexOf(node.id) >= 0 ? siblings.indexOf(node.id) : 0,
+      };
+    });
+
+    setSaving(true);
+    try {
+      await api.post('/api/exams', {
+        gradeLevel,
+        chapterTitle,
+        chapterCode,
+        chapterDisplayOrder: Number(chapterDisplayOrder) || 0,
+        lessonNumber: Number(lessonNumber) || null,
+        lessonTitle: lessonTitle.trim(),
+        exerciseTitle: exerciseTitle.trim() || 'Bài tập',
+        theoryContent,
+        title: lessonTitle.trim(),
+        nodes,
+      });
+      navigate('/teacher');
+    } catch (err) {
+      setSaveError(err.response?.data?.error || 'Không thể lưu bài học.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const downloadTemplate = () => {
     const url = `${import.meta.env.VITE_API_BASE_URL || ''}/api/exams/template`;
     const token = localStorage.getItem('token');
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.blob())
+      .then((response) => response.blob())
       .then((blob) => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -209,273 +275,278 @@ export default function CreateExam() {
       .catch(console.error);
   };
 
-  // ── Import từ Excel ──────────────────────────────────────────────────────
-  const handleImportExcel = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !title.trim()) {
-      alert('Vui lòng nhập tiêu đề bài tập trước khi import');
+  const handleImportExcel = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !lessonTitle.trim()) {
+      setSaveError('Cần nhập thông tin bài học trước khi import Excel.');
       return;
     }
+
     setImporting(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('title', title.trim());
+      formData.append('gradeLevel', gradeLevel);
+      formData.append('chapterTitle', chapterTitle);
+      formData.append('chapterCode', chapterCode);
+      formData.append('chapterDisplayOrder', String(chapterDisplayOrder));
+      formData.append('lessonNumber', String(lessonNumber));
+      formData.append('lessonTitle', lessonTitle);
+      formData.append('exerciseTitle', exerciseTitle);
+      formData.append('theoryContent', theoryContent);
+      formData.append('title', lessonTitle);
       await api.post('/api/exams/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       navigate('/teacher');
     } catch (err) {
-      setSaveError(err.response?.data?.error || 'Import thất bại');
+      setSaveError(err.response?.data?.error || 'Import Excel thất bại.');
     } finally {
       setImporting(false);
-      e.target.value = '';
+      event.target.value = '';
     }
   };
-
-  // ── Lưu bài tập ─────────────────────────────────────────────────────────
-  const saveExam = async () => {
-    setSaveError('');
-    if (!title.trim()) { setSaveError('Vui lòng nhập tiêu đề bài tập'); return; }
-    if (rfNodes.length === 0) { setSaveError('Cần ít nhất một node'); return; }
-
-    const missing = rfNodes.filter((n) => !n.data.question || !n.data.correctAnswer);
-    if (missing.length > 0) {
-      setSaveError(`${missing.length} node chưa có câu hỏi / đáp án: ${missing.map((n) => n.data.label).join(', ')}`);
-      return;
-    }
-
-    const parentMap = {};
-    rfEdges.forEach((e) => { parentMap[e.target] = e.source; });
-    const childOrderMap = {};
-    rfEdges.forEach((e) => {
-      if (!childOrderMap[e.source]) childOrderMap[e.source] = [];
-      childOrderMap[e.source].push(e.target);
-    });
-
-    const apiNodes = rfNodes.map((n) => {
-      const parentTempId = parentMap[n.id] || null;
-      const siblings = parentTempId ? (childOrderMap[parentTempId] || []) : [];
-      const order = siblings.indexOf(n.id);
-
-      const opts = n.data.isMultiChoice
-        ? n.data.options?.filter((o) => o.trim()).map((o, i) => `${['A', 'B', 'C', 'D'][i]}. ${o}`)
-        : null;
-
-      return {
-        tempId: n.id,
-        parentTempId,
-        label: n.data.label || '',
-        question: n.data.question || '',
-        options: opts || null,
-        correctAnswer: n.data.correctAnswer || '',
-        hint: n.data.hint || '',
-        points: parseInt(n.data.points) || 1,
-        order: order >= 0 ? order : 0,
-      };
-    });
-
-    setSaving(true);
-    try {
-      await api.post('/api/exams', { title: title.trim(), nodes: apiNodes });
-      navigate('/teacher');
-    } catch (err) {
-      setSaveError(err.response?.data?.error || 'Lưu bài tập thất bại');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const hasRoot = rfNodes.length > 0;
-  const incomplete = rfNodes.some((n) => !n.data.question || !n.data.correctAnswer);
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f7fa' }}>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f7f1e8' }}>
       <Navbar />
 
-      {/* Toolbar */}
-      <Paper elevation={1} square sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-        <IconButton onClick={() => navigate('/teacher')} size="small">
-          <ArrowBackIcon />
-        </IconButton>
-        <AccountTreeIcon color="primary" />
-        <TextField
-          label="Tiêu đề bài tập"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          size="small"
-          sx={{ minWidth: 240 }}
-          placeholder="Nhập tiêu đề..."
-        />
-
-        <Button variant="outlined" startIcon={<AddIcon />} onClick={addRootNode} disabled={hasRoot} size="small">
-          Thêm node gốc
-        </Button>
-        <Button variant="outlined" startIcon={<AddIcon />} onClick={addChildNode} disabled={!selectedId} size="small" color="secondary">
-          Thêm node con
-        </Button>
-        <Tooltip title="Xóa node đang chọn (và tất cả con)">
-          <span>
-            <IconButton color="error" onClick={deleteSelectedNode} disabled={!selectedId} size="small">
-              <DeleteIcon />
+      <Paper elevation={0} square sx={{ px: 2, py: 1.5, borderBottom: '1px solid #eadcc5' }}>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5} alignItems={{ lg: 'center' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <IconButton onClick={() => navigate('/teacher')}>
+              <ArrowBackIcon />
             </IconButton>
-          </span>
-        </Tooltip>
+            <AccountTreeIcon sx={{ color: '#8c5c22' }} />
+            <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15' }}>
+              Tạo bài học dạng sơ đồ tư duy
+            </Typography>
+          </Stack>
 
-        <Divider orientation="vertical" flexItem />
+          <Box sx={{ flex: 1 }} />
 
-        <Tooltip title="Tải file Excel mẫu">
-          <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
-            Tải mẫu
-          </Button>
-        </Tooltip>
-        <Tooltip title="Import bài tập từ file Excel (cần nhập tiêu đề trước)">
-          <Button
-            variant="outlined"
-            size="small"
-            color="success"
-            startIcon={importing ? <CircularProgress size={14} /> : <UploadFileIcon />}
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing || !title.trim()}
-          >
-            Import Excel
-          </Button>
-        </Tooltip>
-        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportExcel} />
-
-        <Box sx={{ flex: 1 }} />
-
-        {incomplete && (
-          <Chip
-            label={`${rfNodes.filter((n) => !n.data.question || !n.data.correctAnswer).length} node chưa đủ`}
-            color="warning"
-            size="small"
-          />
-        )}
-        <Button
-          variant="contained"
-          startIcon={<SaveIcon />}
-          onClick={saveExam}
-          disabled={saving || !hasRoot || !title.trim()}
-          color="success"
-        >
-          {saving ? <CircularProgress size={18} /> : 'Lưu bài tập'}
-        </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
+              Tải mẫu
+            </Button>
+            <Button variant="outlined" color="success" startIcon={<UploadFileIcon />} onClick={() => fileInputRef.current?.click()}>
+              {importing ? 'Đang import' : 'Import Excel'}
+            </Button>
+            <Button variant="contained" startIcon={<SaveIcon />} onClick={saveExam} disabled={saving}>
+              {saving ? <CircularProgress size={18} color="inherit" /> : 'Lưu bài học'}
+            </Button>
+          </Stack>
+        </Stack>
       </Paper>
 
+      <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportExcel} />
+
       {saveError && (
-        <Alert severity="error" onClose={() => setSaveError('')} sx={{ mx: 2, mt: 1 }}>
+        <Alert severity="error" sx={{ mx: 2, mt: 2 }}>
           {saveError}
         </Alert>
       )}
 
-      <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <Paper elevation={3} sx={{ width: 320, flexShrink: 0, overflowY: 'auto', p: 2, borderRadius: 0 }}>
-          {selectedNode ? (
-            <>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Chỉnh sửa node</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <TextField
-                fullWidth
-                label="Tên node"
-                value={form.label}
-                onChange={(e) => updateForm('label', e.target.value)}
-                size="small"
-                sx={{ mb: 2 }}
-                required
-                placeholder="Nhập tên cho node..."
-                inputRef={labelFieldRef}
-              />
-              <TextField fullWidth label="Câu hỏi *" value={form.question} onChange={(e) => updateForm('question', e.target.value)} size="small" multiline rows={3} sx={{ mb: 2 }} required />
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+        <Grid container sx={{ height: '100%' }}>
+          <Grid item xs={12} lg={4} sx={{ height: '100%', overflowY: 'auto', borderRight: { lg: '1px solid #eadcc5' } }}>
+            <Box sx={{ p: 2.5 }}>
+              <Paper sx={{ p: 2.5, borderRadius: 4, mb: 2 }}>
+                <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#5d3c15', mb: 2 }}>
+                  Thông tin bài học
+                </Typography>
 
-              <FormControlLabel
-                sx={{ mb: 1.5 }}
-                control={
-                  <Switch
-                    checked={form.isMultiChoice}
-                    onChange={(e) => updateForm('isMultiChoice', e.target.checked)}
-                    size="small"
-                  />
-                }
-                label={<Typography variant="caption">Trắc nghiệm (A/B/C/D)</Typography>}
-              />
-
-              {form.isMultiChoice ? (
-                <Stack spacing={1} sx={{ mb: 2 }}>
-                  {['A', 'B', 'C', 'D'].map((letter, i) => (
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Khối</InputLabel>
+                      <Select value={gradeLevel} label="Khối" onChange={(e) => setGradeLevel(e.target.value)}>
+                        {GRADE_OPTIONS.map((item) => (
+                          <MenuItem key={item} value={item}>
+                            Lớp {item}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
                     <TextField
-                      key={letter}
                       fullWidth
-                      label={`Phương án ${letter}`}
-                      value={form.options?.[i] || ''}
-                      onChange={(e) => updateOption(i, e.target.value)}
                       size="small"
+                      label="Tên chương"
+                      value={chapterTitle}
+                      onChange={(e) => setChapterTitle(e.target.value)}
                     />
-                  ))}
-                  <TextField
-                    fullWidth
-                    label="Đáp án đúng (A/B/C/D) *"
-                    value={form.correctAnswer}
-                    onChange={(e) => updateForm('correctAnswer', e.target.value.toUpperCase().replace(/[^ABCD]/g, ''))}
-                    size="small"
-                    inputProps={{ maxLength: 1 }}
-                    helperText="Nhập một trong các ký tự: A, B, C, D"
-                  />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Mã chương"
+                      value={chapterCode}
+                      onChange={(e) => setChapterCode(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Thứ tự chương"
+                      value={chapterDisplayOrder}
+                      onChange={(e) => setChapterDisplayOrder(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label="Số bài"
+                      value={lessonNumber}
+                      onChange={(e) => setLessonNumber(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Tên bài"
+                      value={lessonTitle}
+                      onChange={(e) => setLessonTitle(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Nhãn nút bài tập"
+                      value={exerciseTitle}
+                      onChange={(e) => setExerciseTitle(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={5}
+                      label="Lý thuyết"
+                      value={theoryContent}
+                      onChange={(e) => setTheoryContent(e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              <Paper sx={{ p: 2.5, borderRadius: 4 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#5d3c15', flex: 1 }}>
+                    Nội dung node
+                  </Typography>
+                  <Chip label={`${rfNodes.length} node`} size="small" />
                 </Stack>
-              ) : (
-                <TextField
-                  fullWidth
-                  label="Đáp án đúng *"
-                  value={form.correctAnswer}
-                  onChange={(e) => updateForm('correctAnswer', e.target.value)}
-                  size="small"
-                  sx={{ mb: 2 }}
-                  helperText="So sánh không phân biệt hoa thường"
-                />
-              )}
 
-              <TextField fullWidth label="Gợi ý (hint)" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} size="small" multiline rows={2} sx={{ mb: 2 }} />
-              <TextField
-                fullWidth
-                label="Điểm"
-                type="number"
-                value={form.points}
-                onChange={(e) => updateForm('points', Math.max(1, parseInt(e.target.value) || 1))}
-                size="small"
-                inputProps={{ min: 1 }}
-              />
-            </>
-          ) : (
-            <Box sx={{ textAlign: 'center', mt: 6 }}>
-              <AccountTreeIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-              <Typography color="text.secondary" sx={{ mt: 1 }} variant="body2">
-                {hasRoot ? 'Click vào node để chỉnh sửa' : 'Nhấn "Thêm node gốc" để bắt đầu hoặc Import từ Excel'}
-              </Typography>
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+                  <Button variant="outlined" startIcon={<AddIcon />} disabled={rfNodes.length > 0} onClick={addRootNode}>
+                    Thêm node gốc
+                  </Button>
+                  <Button variant="outlined" color="secondary" startIcon={<AddIcon />} disabled={!selectedId} onClick={addChildNode}>
+                    Thêm node con
+                  </Button>
+                  <Tooltip title="Xóa node đang chọn và toàn bộ node con">
+                    <span>
+                      <IconButton color="error" onClick={deleteSelectedNode} disabled={!selectedId}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
+
+                {selectedNode ? (
+                  <Stack spacing={1.5}>
+                    <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
+                    <TextField fullWidth multiline minRows={3} size="small" label="Câu hỏi" value={form.question} onChange={(e) => updateForm('question', e.target.value)} />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={form.isMultiChoice}
+                          onChange={(e) => updateForm('isMultiChoice', e.target.checked)}
+                        />
+                      }
+                      label="Dạng trắc nghiệm A/B/C/D"
+                    />
+
+                    {form.isMultiChoice && (
+                      <Stack spacing={1}>
+                        {['A', 'B', 'C', 'D'].map((label, index) => (
+                          <TextField
+                            key={label}
+                            fullWidth
+                            size="small"
+                            label={`Phương án ${label}`}
+                            value={form.options[index]}
+                            onChange={(e) => updateOption(index, e.target.value)}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label={form.isMultiChoice ? 'Đáp án đúng (A/B/C/D)' : 'Đáp án đúng'}
+                      value={form.correctAnswer}
+                      onChange={(e) =>
+                        updateForm(
+                          'correctAnswer',
+                          form.isMultiChoice
+                            ? e.target.value.toUpperCase().replace(/[^ABCD]/g, '')
+                            : e.target.value
+                        )
+                      }
+                    />
+                    <TextField fullWidth size="small" label="Gợi ý" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} />
+                    <TextField fullWidth size="small" type="number" label="Điểm" value={form.points} onChange={(e) => updateForm('points', Math.max(1, Number(e.target.value) || 1))} />
+                  </Stack>
+                ) : (
+                  <Typography color="text.secondary">
+                    Chọn một node trên sơ đồ để chỉnh sửa nội dung.
+                  </Typography>
+                )}
+              </Paper>
             </Box>
-          )}
-        </Paper>
+          </Grid>
 
-        {/* React Flow canvas */}
-        <Box sx={{ flex: 1 }}>
-          <ReactFlow
-            nodes={rfNodes}
-            edges={rfEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
-            fitView
-            fitViewOptions={{ padding: 0.3 }}
-            minZoom={0.3}
-            maxZoom={2}
-            deleteKeyCode={null}
-          >
-            <Controls />
-            <Background color="#e0e0e0" gap={20} />
-          </ReactFlow>
-        </Box>
+          <Grid item xs={12} lg={8} sx={{ height: '100%' }}>
+            <Box sx={{ height: '100%' }}>
+              <ReactFlow
+                nodes={rfNodes}
+                edges={rfEdges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeClick={(_, node) => {
+                  setSelectedId(node.id);
+                  setForm({
+                    label: node.data.label || '',
+                    question: node.data.question || '',
+                    options: node.data.options || ['', '', '', ''],
+                    correctAnswer: node.data.correctAnswer || '',
+                    hint: node.data.hint || '',
+                    points: node.data.points || 1,
+                    isMultiChoice: node.data.isMultiChoice || false,
+                  });
+                }}
+                onPaneClick={() => setSelectedId(null)}
+                nodeTypes={nodeTypes}
+                fitView
+                fitViewOptions={{ padding: 0.3 }}
+              >
+                <Controls />
+                <Background color="#e5d6be" gap={20} />
+              </ReactFlow>
+            </Box>
+          </Grid>
+        </Grid>
       </Box>
     </Box>
   );

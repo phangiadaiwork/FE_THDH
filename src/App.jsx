@@ -11,12 +11,12 @@ import PrivateRoute from './components/PrivateRoute';
 
 const theme = createTheme({
   palette: {
-    primary: { main: '#1565c0' },
-    secondary: { main: '#6a1b9a' },
-    background: { default: '#f5f7fa' },
+    primary: { main: '#8c5c22' },
+    secondary: { main: '#b68134' },
+    background: { default: '#f7f1e8' },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica Neue", Arial, sans-serif',
+    fontFamily: '"Be Vietnam Pro", "Segoe UI", Arial, sans-serif',
   },
   shape: { borderRadius: 10 },
 });

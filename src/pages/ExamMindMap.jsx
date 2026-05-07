@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import ReactFlow, {
   Controls,
   Background,
@@ -219,8 +219,10 @@ const OptionGrid = memo(({ options, correctAnswer, chosenAnswer, onSelect, readO
 export default function ExamMindMap() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isViewMode = searchParams.get('mode') === 'review';
 
   const rfInstanceRef = useRef(null);
 
@@ -362,20 +364,62 @@ export default function ExamMindMap() {
     [buildMap]
   );
 
+  const restoreCompletedAttempt = useCallback(
+    (flatNodes, nodeAnswers, score = 0) => {
+      const { root, nodeMap: nm } = buildTree(flatNodes);
+      setNodeMap(nm);
+      if (!root) return;
+
+      const positions = calcPositions(root);
+      const order = getDFSOrder(root);
+      setDfsOrder(order);
+      setTotalNodes(order.length);
+
+      const statuses = {};
+      flatNodes.forEach((node) => { statuses[node.id] = 'locked'; });
+
+      const restoredAnswerMap = {};
+      nodeAnswers.forEach((nodeAnswer) => {
+        statuses[nodeAnswer.nodeId] = nodeAnswer.isCorrect ? 'correct' : 'incorrect';
+        restoredAnswerMap[nodeAnswer.nodeId] = {
+          answer: nodeAnswer.answer,
+          isCorrect: nodeAnswer.isCorrect,
+        };
+      });
+
+      scoreRef.current = score;
+      setScoreDisplay(score);
+      setNodeAnswerMap(restoredAnswerMap);
+      setAnswer('');
+      setAnswerResult(null);
+      setDialogNodeId(null);
+      setFinished(true);
+      setSubmitResult(null);
+      buildMap(flatNodes, positions, statuses, []);
+    },
+    [buildMap]
+  );
+
   useEffect(() => {
     const init = async () => {
       try {
         const { data: examData } = await api.get(`/api/exams/${id}`);
         setExam(examData);
-        const progressRes = await api.get(`/api/attempts/progress?examId=${id}`);
-        const progress = progressRes.data;
-        if (progress?.nodeAnswers?.length > 0) {
-          attemptIdRef.current = progress.attemptId;
-          restoreProgress(examData.nodes, progress.nodeAnswers);
+        if (isViewMode) {
+          const { data: reviewData } = await api.get(`/api/attempts/review?examId=${id}`);
+          attemptIdRef.current = reviewData.attemptId;
+          restoreCompletedAttempt(examData.nodes, reviewData.nodeAnswers, reviewData.score || 0);
         } else {
-          const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
-          attemptIdRef.current = startData.attemptId;
-          initFresh(examData.nodes);
+          const progressRes = await api.get(`/api/attempts/progress?examId=${id}`);
+          const progress = progressRes.data;
+          if (progress?.nodeAnswers?.length > 0) {
+            attemptIdRef.current = progress.attemptId;
+            restoreProgress(examData.nodes, progress.nodeAnswers);
+          } else {
+            const { data: startData } = await api.post('/api/attempts/start', { examId: parseInt(id) });
+            attemptIdRef.current = startData.attemptId;
+            initFresh(examData.nodes);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -384,7 +428,7 @@ export default function ExamMindMap() {
       }
     };
     init();
-  }, [id, initFresh, restoreProgress]);
+  }, [id, initFresh, isViewMode, restoreCompletedAttempt, restoreProgress]);
 
   const applyNodeStatus = useCallback((nodeId, status) => {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
@@ -525,6 +569,10 @@ export default function ExamMindMap() {
   };
 
   const handleReset = async () => {
+    if (isViewMode) {
+      navigate(`/student/exam/${id}`);
+      return;
+    }
     if (!exam) return;
     setResultDialogOpen(false); 
     setDialogNodeId(null);  
@@ -647,7 +695,7 @@ export default function ExamMindMap() {
           noWrap
           sx={{ flex: 1, minWidth: 0, fontSize: { xs: '0.75rem', sm: '1rem' } }}
         >
-          {exam?.title}
+          {exam?.lessonTitle || exam?.title}
         </Typography>
         <Chip
           label={`${scoreDisplay} điểm`}
