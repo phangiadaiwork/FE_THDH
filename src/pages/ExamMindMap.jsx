@@ -24,10 +24,6 @@ import {
   CircularProgress,
   LinearProgress,
   Paper,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  FormControl,
   Tooltip,
   IconButton,
   Divider,
@@ -143,15 +139,6 @@ export default function ExamMindMap() {
   const [nodeMap, setNodeMap] = useState({});
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
-
-  // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc) — tính đồng bộ, không race
-  const displayNodes = useMemo(() =>
-    rfNodes.map((n) => ({
-      ...n,
-      data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'locked' },
-    })),
-    [rfNodes, nodeStatuses]
-  );
   const [loading, setLoading] = useState(true);
 
   const [dfsOrder, setDfsOrder] = useState([]);
@@ -159,22 +146,31 @@ export default function ExamMindMap() {
   const [nodeStatuses, setNodeStatuses] = useState({});
   const [totalNodes, setTotalNodes] = useState(0);
 
-  // Lưu câu trả lời đã nhập: { [nodeId]: { answer, isCorrect } }
   const [nodeAnswerMap, setNodeAnswerMap] = useState({});
 
   const attemptIdRef = useRef(null);
   const scoreRef = useRef(0);
   const [scoreDisplay, setScoreDisplay] = useState(0);
 
-  // Dialog: dialogNodeId = nodeId đang mở, null = đóng
   const [dialogNodeId, setDialogNodeId] = useState(null);
   const [answer, setAnswer] = useState('');
-  const [answerResult, setAnswerResult] = useState(null); // 'correct' | 'incorrect' | null
+  const [answerResult, setAnswerResult] = useState(null);
+  const blockRef = useRef(false); // chống double-click / double-submit
 
   const [finished, setFinished] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [rfInstance, setRfInstance] = useState(null);
+
+  // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc)
+  // Phải khai báo SAU tất cả state để tránh TDZ (Temporal Dead Zone)
+  const displayNodes = useMemo(() =>
+    rfNodes.map((n) => ({
+      ...n,
+      data: { ...n.data, status: nodeStatuses[parseInt(n.id)] || 'locked' },
+    })),
+    [rfNodes, nodeStatuses]
+  );
 
   // ── Build map lên React Flow ──────────────────────────────────────────────
   const buildMap = useCallback((flatNodes, positions, initStatuses, queue) => {
@@ -283,15 +279,14 @@ export default function ExamMindMap() {
   const onNodeClick = useCallback((_evt, node) => {
     const nid = parseInt(node.id);
     const status = nodeStatuses[nid];
-    if (status === 'locked') return; // Không click được node khóa
+    if (status === 'locked') return;
 
     setDialogNodeId(nid);
-    // Nếu là node hiện tại (chưa trả lời) → reset answer input
     if (status === 'current') {
+      blockRef.current = false;
       setAnswer('');
       setAnswerResult(null);
     }
-    // Nếu đã trả lời → hiển thị review (giữ nguyên answerResult từ nodeAnswerMap)
   }, [nodeStatuses]);
 
   const closeDialog = () => {
@@ -312,11 +307,12 @@ export default function ExamMindMap() {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
   }, []);
 
-  // ── Trả lời câu hỏi ──────────────────────────────────────────────────────
-  const handleAnswer = async () => {
-    if (!dialogNode || !answer.trim() || !isAnswerMode) return;
+  // ── Core submit: dùng chung cho text input và option click ──────────────
+  const submitAnswer = useCallback((ans) => {
+    if (!dialogNode || !ans.trim() || !isAnswerMode || blockRef.current) return;
+    blockRef.current = true;
 
-    const correct = answer.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
+    const correct = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
     const currentNodeId = dialogNodeId;
 
     if (correct) {
@@ -324,21 +320,30 @@ export default function ExamMindMap() {
       setScoreDisplay(scoreRef.current);
     }
     applyNodeStatus(currentNodeId, correct ? 'correct' : 'incorrect');
+    setAnswer(ans.trim());
     setAnswerResult(correct ? 'correct' : 'incorrect');
-    setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: answer.trim(), isCorrect: correct } }));
+    setNodeAnswerMap((prev) => ({ ...prev, [currentNodeId]: { answer: ans.trim(), isCorrect: correct } }));
 
     if (attemptIdRef.current) {
       api.post('/api/attempts/answer', {
         attemptId: attemptIdRef.current,
         nodeId: currentNodeId,
-        answer: answer.trim(),
+        answer: ans.trim(),
         isCorrect: correct,
       }).catch(console.error);
     }
-  };
+  }, [dialogNode, dialogNodeId, isAnswerMode, applyNodeStatus]);
+
+  const handleAnswer = () => submitAnswer(answer);
+
+  // Trắc nghiệm: click option = submit luôn, không cần bước "Trả lời" riêng
+  const handleSelectOption = (letter) => submitAnswer(letter);
 
   // ── Tiếp tục sang node kế tiếp ────────────────────────────────────────────
   const handleContinue = () => {
+    if (blockRef.current && answerResult === null) return; // guard khi chưa trả lời
+    blockRef.current = false; // reset cho câu tiếp theo
+
     const remaining = dfsQueue.slice(1);
     setDfsQueue(remaining);
     setAnswer('');
@@ -346,8 +351,8 @@ export default function ExamMindMap() {
 
     if (remaining.length > 0) {
       const nextId = remaining[0];
-      applyNodeStatus(nextId, 'current'); // Mở khóa node tiếp theo ngay lập tức
-      setDialogNodeId(nextId);            // Mở thẳng câu tiếp theo
+      applyNodeStatus(nextId, 'current');
+      setDialogNodeId(nextId);
     } else {
       setDialogNodeId(null);
       setFinished(true);
@@ -514,6 +519,7 @@ export default function ExamMindMap() {
         maxWidth="sm"
         fullWidth
         fullScreen={isMobile}
+        transitionDuration={{ enter: 150, exit: 100 }}
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -557,26 +563,30 @@ export default function ExamMindMap() {
           {/* ── Chế độ trả lời (node hiện tại) ── */}
           {isAnswerMode && answerResult === null && (
             hasOptions ? (
-              <FormControl fullWidth>
-                <RadioGroup value={answer} onChange={(e) => setAnswer(e.target.value)}>
-                  {dialogNode.options.map((opt, i) => (
-                    <FormControlLabel
-                      key={i}
-                      value={opt.charAt(0)}
-                      control={<Radio />}
-                      label={opt}
-                      sx={{
-                        mb: 0.5,
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        mx: 0,
-                        px: 1,
-                        '&:hover': { bgcolor: '#f5f5f5' },
-                      }}
-                    />
-                  ))}
-                </RadioGroup>
-              </FormControl>
+              // Trắc nghiệm: click option = submit ngay (1 bước)
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {dialogNode.options.map((opt, i) => (
+                  <Button
+                    key={i}
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => handleSelectOption(opt.charAt(0))}
+                    sx={{
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      fontSize: '0.95rem',
+                      py: 1.2,
+                      px: 2,
+                      borderColor: '#ccc',
+                      color: 'text.primary',
+                      '&:hover': { bgcolor: '#fff8e1', borderColor: '#f9a825', transform: 'translateX(3px)' },
+                      transition: 'all 0.12s ease',
+                    }}
+                  >
+                    {opt}
+                  </Button>
+                ))}
+              </Box>
             ) : (
               <TextField
                 fullWidth
@@ -681,15 +691,18 @@ export default function ExamMindMap() {
               <Button variant="outlined" onClick={closeDialog}>
                 Xem sơ đồ
               </Button>
-              <Button
-                variant="contained"
-                onClick={handleAnswer}
-                disabled={!answer.trim()}
-                size="large"
-                sx={{ flex: 1 }}
-              >
-                Trả lời
-              </Button>
+              {/* Chỉ hiện nút Trả lời cho câu tự luận; trắc nghiệm click option là submit luôn */}
+              {!hasOptions && (
+                <Button
+                  variant="contained"
+                  onClick={handleAnswer}
+                  disabled={!answer.trim()}
+                  size="large"
+                  sx={{ flex: 1 }}
+                >
+                  Trả lời
+                </Button>
+              )}
             </>
           )}
           {isAnswerMode && answerResult !== null && (
