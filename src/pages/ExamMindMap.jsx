@@ -161,6 +161,7 @@ export default function ExamMindMap() {
   const [answerResult, setAnswerResult] = useState(null);
   const [answerPending, setAnswerPending] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [focusCurrentRequested, setFocusCurrentRequested] = useState(false);
   const blockRef = useRef(false); // chống double-click / double-submit
 
   const [finished, setFinished] = useState(false);
@@ -298,7 +299,7 @@ export default function ExamMindMap() {
 
   const closeDialog = () => {
     setDialogNodeId(null);
-    // Không reset answer/answerResult để giữ trạng thái khi mở lại
+    // Giữ answerResult và answer trong state; chỉ đóng dialog
   };
 
   // ── Lấy node đang hiển thị trong dialog ───────────────────────────────────
@@ -308,6 +309,25 @@ export default function ExamMindMap() {
   const isAnswerMode = dialogStatus === 'current';
   const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
   const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
+
+  const optionCardSx = (checked, disabled = false) => ({
+    m: 0,
+    px: 1.5,
+    py: 0.95,
+    border: '1px solid',
+    borderColor: checked ? '#43a047' : '#e0e0e0',
+    borderRadius: 1.5,
+    bgcolor: checked ? '#e8f5e9' : 'white',
+    boxShadow: 'none',
+    transition: 'all 0.18s ease',
+    cursor: disabled ? 'default' : 'pointer',
+    '&:hover': disabled
+      ? {}
+      : {
+          bgcolor: checked ? '#e8f5e9' : '#fafafa',
+          borderColor: checked ? '#43a047' : '#f9a825',
+        },
+  });
 
   // ── Helper: cập nhật status — displayNodes (useMemo) tự sync lên map ──
   const applyNodeStatus = useCallback((nodeId, status) => {
@@ -421,10 +441,17 @@ export default function ExamMindMap() {
     }
   }, [rfInstance, currentQueueNodeId, rfNodes]); // rfNodes dùng để lấy position (không phải displayNodes)
 
+  useEffect(() => {
+    if (focusCurrentRequested && dialogNodeId === null) {
+      handleGoToCurrent();
+      setFocusCurrentRequested(false);
+    }
+  }, [focusCurrentRequested, dialogNodeId, handleGoToCurrent]);
+
   const handleCloseAndFocus = useCallback(() => {
+    setFocusCurrentRequested(true);
     closeDialog();
-    handleGoToCurrent();
-  }, [handleGoToCurrent]);
+  }, []);
 
   if (loading) {
     return (
@@ -538,7 +565,7 @@ export default function ExamMindMap() {
       {/* ── Dialog câu hỏi / xem lại ───────────────────────────────────── */}
       <Dialog
         open={Boolean(dialogNodeId) && !finished}
-        onClose={closeDialog}
+        onClose={handleCloseAndFocus}
         maxWidth="sm"
         fullWidth
         fullScreen={isMobile}
@@ -570,7 +597,7 @@ export default function ExamMindMap() {
               />
             )}
             {isMobile && (
-              <IconButton size="small" onClick={closeDialog} sx={{ ml: 0.5 }}>
+              <IconButton size="small" onClick={handleCloseAndFocus} sx={{ ml: 0.5 }}>
                 <CloseIcon fontSize="small" />
               </IconButton>
             )}
@@ -586,45 +613,34 @@ export default function ExamMindMap() {
           {/* ── Chế độ trả lời (node hiện tại) ── */}
           {isAnswerMode && answerResult === null && (
             hasOptions ? (
-              <FormControl fullWidth>
-                <RadioGroup
-                  value={answer}
-                  onChange={(e) => handleSelectOption(e.target.value)}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                    gap: 1,
-                  }}
-                >
-                  {dialogNode.options.map((opt, i) => {
-                    const letter = opt.charAt(0);
-                    const checked = answer === letter;
-                    return (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
+                {dialogNode.options.map((opt, i) => {
+                  const letter = opt.charAt(0);
+                  const checked = answer === letter;
+                  return (
+                    <Box
+                      key={i}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => !actionBusy && handleSelectOption(letter)}
+                      onKeyDown={(e) => e.key === 'Enter' && !actionBusy && handleSelectOption(letter)}
+                      sx={optionCardSx(checked, actionBusy)}
+                    >
                       <FormControlLabel
-                        key={i}
                         value={letter}
-                        control={<Radio />}
-                        disabled={actionBusy}
+                        control={<Radio checked={checked} />}
                         label={opt}
+                        disabled={actionBusy}
                         sx={{
                           m: 0,
-                          px: 1.5,
-                          py: 0.75,
-                          border: '1px solid',
-                          borderColor: checked ? '#f9a825' : '#e0e0e0',
-                          borderRadius: 2,
-                          bgcolor: checked ? '#fff8e1' : 'white',
-                          transition: 'all 0.18s ease',
-                          '&:hover': {
-                            bgcolor: checked ? '#fff3cd' : '#fafafa',
-                            borderColor: '#f9a825',
-                          },
+                          width: '100%',
+                          '& .MuiFormControlLabel-label': { flex: 1, fontSize: '0.95rem' },
                         }}
                       />
-                    );
-                  })}
-                </RadioGroup>
-              </FormControl>
+                    </Box>
+                  );
+                })}
+              </Box>
             ) : (
               <TextField
                 fullWidth
@@ -636,6 +652,14 @@ export default function ExamMindMap() {
                 key={dialogNodeId}
                 placeholder="Nhập câu trả lời rồi nhấn Enter..."
                 disabled={actionBusy}
+                name={`essay-answer-${dialogNodeId ?? 'current'}`}
+                autoComplete="new-password"
+                inputProps={{
+                  autoComplete: 'new-password',
+                  spellCheck: false,
+                  autoCorrect: 'off',
+                  autoCapitalize: 'none',
+                }}
               />
             )
           )}
@@ -696,12 +720,12 @@ export default function ExamMindMap() {
                       <Box
                         key={i}
                         sx={{
+                          ...optionCardSx(isCorrect, true),
                           p: 1,
-                          mb: 0.5,
-                          borderRadius: 1,
+                          mb: 0.75,
                           border: '1px solid',
                           borderColor: isCorrect ? '#43a047' : isChosen ? '#e53935' : '#e0e0e0',
-                          bgcolor: isCorrect ? '#e8f5e9' : isChosen ? '#fce4ec' : 'transparent',
+                          bgcolor: isCorrect ? '#e8f5e9' : isChosen ? '#fce4ec' : 'white',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 1,
@@ -813,10 +837,20 @@ export default function ExamMindMap() {
           ) : null}
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/student')}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/student')}
+            disabled={submitting || !submitResult}
+          >
             Về trang chủ
           </Button>
-          <Button variant="contained" startIcon={<ReplayIcon />} onClick={handleReset}>
+          <Button
+            variant="contained"
+            startIcon={<ReplayIcon />}
+            onClick={handleReset}
+            disabled={submitting || !submitResult}
+          >
             Làm lại từ đầu
           </Button>
         </DialogActions>
