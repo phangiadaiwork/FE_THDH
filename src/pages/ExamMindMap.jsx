@@ -132,6 +132,43 @@ function getDFSOrder(root) {
   return order;
 }
 
+// ─── Hàm hiển thị lưới đáp án trắc nghiệm (dùng chung cho xem đáp án & xem lại) ──
+function renderOptionsReview(options, correctAnswer, chosenAnswer) {
+  return (
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+      gap: 1,
+      mt: 2,
+    }}>
+      {options.map((opt, i) => {
+        const letter = opt.charAt(0);
+        const isCorrect = letter === correctAnswer;
+        const isChosen = letter === chosenAnswer;
+        return (
+          <Box
+            key={i}
+            sx={{
+              p: 1,
+              border: '1px solid',
+              borderColor: isCorrect ? '#43a047' : isChosen ? '#e53935' : '#e0e0e0',
+              bgcolor: isCorrect ? '#e8f5e9' : isChosen ? '#fce4ec' : 'white',
+              borderRadius: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1 }}>{opt}</Typography>
+            {isCorrect && <CheckCircleIcon sx={{ color: '#43a047', fontSize: 16 }} />}
+            {isChosen && !isCorrect && <CancelIcon sx={{ color: '#e53935', fontSize: 16 }} />}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 export default function ExamMindMap() {
   const { id } = useParams();
@@ -174,7 +211,6 @@ export default function ExamMindMap() {
   const actionBusy = answerPending || submitting || resetting;
 
   // displayNodes = rfNodes (structure/vị trí) + nodeStatuses (màu sắc)
-  // Phải khai báo SAU tất cả state để tránh TDZ (Temporal Dead Zone)
   const displayNodes = useMemo(() =>
     rfNodes.map((n) => ({
       ...n,
@@ -302,7 +338,6 @@ export default function ExamMindMap() {
 
   const closeDialog = () => {
     setDialogNodeId(null);
-    // Giữ answerResult và answer trong state; chỉ đóng dialog
   };
 
   // ── Lấy node đang hiển thị trong dialog ───────────────────────────────────
@@ -313,26 +348,7 @@ export default function ExamMindMap() {
   const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
   const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
 
-  const optionCardSx = (checked, disabled = false) => ({
-    m: 0,
-    px: 1.5,
-    py: 0.95,
-    border: '1px solid',
-    borderColor: checked ? '#43a047' : '#e0e0e0',
-    borderRadius: 1.5,
-    bgcolor: checked ? '#e8f5e9' : 'white',
-    boxShadow: 'none',
-    transition: 'all 0.18s ease',
-    cursor: disabled ? 'default' : 'pointer',
-    '&:hover': disabled
-      ? {}
-      : {
-          bgcolor: checked ? '#e8f5e9' : '#fafafa',
-          borderColor: checked ? '#43a047' : '#f9a825',
-        },
-  });
-
-  // ── Helper: cập nhật status — displayNodes (useMemo) tự sync lên map ──
+  // ── Helper: cập nhật status ──
   const applyNodeStatus = useCallback((nodeId, status) => {
     setNodeStatuses((prev) => ({ ...prev, [nodeId]: status }));
   }, []);
@@ -382,19 +398,16 @@ export default function ExamMindMap() {
     if (actionBusy || (blockRef.current && answerResult === null)) return;
     blockRef.current = false;
 
-    // Lấy node hiện tại để đánh dấu là 'correct' hoặc 'incorrect'
     const currentNodeId = dfsQueue[0];
     if (currentNodeId && answerResult !== null) {
       applyNodeStatus(currentNodeId, answerResult === 'correct' ? 'correct' : 'incorrect');
     }
 
-    // Loại bỏ node hiện tại khỏi queue
     const remaining = dfsQueue.slice(1);
     setDfsQueue(remaining);
     setAnswer('');
     setAnswerResult(null);
 
-    // Chuyển sang node tiếp theo
     if (remaining.length > 0) {
       const nextId = remaining[0];
       applyNodeStatus(nextId, 'current');
@@ -404,7 +417,6 @@ export default function ExamMindMap() {
       setFinished(true);
     }
   }, [dfsQueue, answerResult, actionBusy, applyNodeStatus]);
-
 
   // ── Hoàn thành bài ────────────────────────────────────────────────────────
   const completeAttempt = async (finalScore) => {
@@ -416,6 +428,7 @@ export default function ExamMindMap() {
           score: finalScore,
         });
         setSubmitResult(data);
+        setFinished(true);            // ✅ đảm bảo dialog kết quả hiện sau khi API trả về
       }
     } catch (err) {
       console.error(err);
@@ -427,7 +440,6 @@ export default function ExamMindMap() {
   // ── Làm lại ───────────────────────────────────────────────────────────────
   const handleReset = async () => {
     if (!exam) return;
-    // Reset dialog kết quả ngay lập tức
     setFinished(false);
     setSubmitResult(null);
     setResetting(true);
@@ -477,7 +489,6 @@ export default function ExamMindMap() {
   // ── Auto-close dialog & focus next node khi trả lời xong ───────────────────
   useEffect(() => {
     if (answerResult !== null && isAnswerMode && dfsQueue.length > 1) {
-      // Không auto-close dialog, chỉ focus node tiếp theo
       const nextNodeId = dfsQueue[1];
       const nextNode = rfNodes.find((n) => parseInt(n.id) === nextNodeId);
       if (rfInstanceRef.current && nextNode) {
@@ -486,12 +497,8 @@ export default function ExamMindMap() {
     }
   }, [answerResult, isAnswerMode, dfsQueue, rfNodes]);
 
-  // ── Auto-submit khi finished = true ──────────────────────────────────────
-  useEffect(() => {
-    if (finished && !submitting && !submitResult) {
-      completeAttempt(scoreDisplay);
-    }
-  }, [finished, submitting, submitResult, scoreDisplay]);
+  // ── Auto-submit bị vô hiệu hoá hoàn toàn để tránh double-submit ──────────
+  // (đã chuyển sang gọi completeAttempt trực tiếp khi bấm nút)
 
   const handleCloseAndFocus = useCallback(() => {
     setFocusCurrentRequested(true);
@@ -510,7 +517,7 @@ export default function ExamMindMap() {
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f7fa' }}>
       <Navbar />
 
-      {/* Info bar */}
+      {/* Info bar – KHÔNG CÒN nút "Nộp bài" */}
       <Paper elevation={1} square sx={{ px: { xs: 1.5, sm: 3 }, py: 1, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap' }}>
         <IconButton size="small" onClick={() => navigate('/student')} sx={{ flexShrink: 0 }}>
           <ArrowBackIcon />
@@ -525,20 +532,7 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
-        <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
-          <span>
-            <Button
-              size="small"
-              variant="contained"
-              color="success"
-              onClick={() => setFinished(true)}
-              disabled={actionBusy || dfsQueue.length > 0 || finished}
-              sx={{ textTransform: 'none' }}
-            >
-              Nộp bài
-            </Button>
-          </span>
-        </Tooltip>
+        {/* Nút Nộp bài đã bị xoá */}
       </Paper>
 
       <LinearProgress
@@ -556,7 +550,7 @@ export default function ExamMindMap() {
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
-          onInit={(instance) => { rfInstanceRef.current = instance; }}
+          onInit={(instance) => { rfInstanceRef.current = instance; setRfInstance(instance); }}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           nodesDraggable={true}
@@ -570,7 +564,7 @@ export default function ExamMindMap() {
           <Background color="#e0e0e0" gap={20} />
         </ReactFlow>
 
-        {/* Nhóm nút điều hướng góc phải dưới */}
+        {/* Overlay khi đang xử lý */}
         {(submitting || resetting) && (
           <Box
             sx={{
@@ -595,6 +589,7 @@ export default function ExamMindMap() {
             </Box>
           </Box>
         )}
+
         <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, zIndex: 10 }}>
           {/* FAB mở câu hỏi hiện tại */}
           {!finished && currentQueueNodeId && dialogNodeId === null && (
@@ -676,7 +671,6 @@ export default function ExamMindMap() {
         </DialogTitle>
 
         <DialogContent dividers>
-          {/* Câu hỏi */}
           <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
             {dialogNode?.question}
           </Typography>
@@ -695,7 +689,24 @@ export default function ExamMindMap() {
                       tabIndex={0}
                       onClick={() => !actionBusy && handleSelectOption(letter)}
                       onKeyDown={(e) => e.key === 'Enter' && !actionBusy && handleSelectOption(letter)}
-                      sx={optionCardSx(checked, actionBusy)}
+                      sx={{
+                        m: 0,
+                        px: 1.5,
+                        py: 0.95,
+                        border: '1px solid',
+                        borderColor: checked ? '#43a047' : '#e0e0e0',
+                        borderRadius: 1.5,
+                        bgcolor: checked ? '#e8f5e9' : 'white',
+                        boxShadow: 'none',
+                        transition: 'all 0.18s ease',
+                        cursor: actionBusy ? 'default' : 'pointer',
+                        '&:hover': actionBusy
+                          ? {}
+                          : {
+                              bgcolor: checked ? '#e8f5e9' : '#fafafa',
+                              borderColor: checked ? '#43a047' : '#f9a825',
+                            },
+                      }}
                     >
                       <FormControlLabel
                         value={letter}
@@ -739,32 +750,36 @@ export default function ExamMindMap() {
             )
           )}
 
-          {/* Kết quả sau khi trả lời (chế độ trả lời) */}
-          {isAnswerMode && answerResult === 'correct' && (
-            <Alert severity="success" icon={<CheckCircleIcon />}>
-              <strong>Chính xác!</strong> +{dialogNode?.points} điểm
-            </Alert>
-          )}
-          {isAnswerMode && answerResult === 'incorrect' && (
-            <Box>
-              <Alert severity="error" sx={{ mb: 1 }}>
-                <strong>Chưa đúng!</strong> Bạn trả lời: <em>{answer}</em><br />
-                Đáp án đúng:{' '}
-                <strong>
-                  {hasOptions
-                    ? dialogNode.options.find((o) => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer
-                    : dialogNode?.correctAnswer}
-                </strong>
-              </Alert>
-              {dialogNode?.hint && (
-                <Alert severity="info" icon={<LightbulbIcon />}>
-                  <strong>Gợi ý:</strong> {dialogNode.hint}
+          {/* Kết quả sau khi trả lời (chế độ trả lời) – ĐỒNG BỘ với giao diện xem lại */}
+          {isAnswerMode && answerResult !== null && (
+            <>
+              {answerResult === 'correct' ? (
+                <Alert severity="success" icon={<CheckCircleIcon />}>
+                  <strong>Chính xác!</strong> +{dialogNode?.points} điểm
                 </Alert>
+              ) : (
+                <Box>
+                  <Alert severity="error" sx={{ mb: 1 }}>
+                    <strong>Chưa đúng!</strong> Bạn trả lời: <em>{answer}</em><br />
+                    Đáp án đúng:{' '}
+                    <strong>
+                      {hasOptions
+                        ? dialogNode.options.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer
+                        : dialogNode?.correctAnswer}
+                    </strong>
+                  </Alert>
+                  {dialogNode?.hint && (
+                    <Alert severity="info" icon={<LightbulbIcon />}>
+                      <strong>Gợi ý:</strong> {dialogNode.hint}
+                    </Alert>
+                  )}
+                </Box>
               )}
-            </Box>
+              {hasOptions && renderOptionsReview(dialogNode.options, dialogNode.correctAnswer, answer)}
+            </>
           )}
 
-          {/* ── Chế độ xem lại (node đã trả lời) ── */}
+          {/* ── Chế độ xem lại – ĐỒNG BỘ ── */}
           {isReviewMode && (
             <Box>
               <Divider sx={{ mb: 2 }} />
@@ -779,41 +794,12 @@ export default function ExamMindMap() {
                   Đáp án đúng:{' '}
                   <strong>
                     {hasOptions
-                      ? dialogNode.options?.find((o) => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer
+                      ? dialogNode.options?.find(o => o.startsWith(dialogNode.correctAnswer)) || dialogNode.correctAnswer
                       : dialogNode?.correctAnswer}
                   </strong>
                 </Alert>
               )}
-              {/* Hiển thị đáp án trắc nghiệm */}
-              {hasOptions && (
-                <Box sx={{ mb: 1.5 }}>
-                  {dialogNode.options.map((opt, i) => {
-                    const letter = opt.charAt(0);
-                    const isCorrect = letter === dialogNode.correctAnswer;
-                    const isChosen = letter === reviewData?.answer;
-                    return (
-                      <Box
-                        key={i}
-                        sx={{
-                          ...optionCardSx(isCorrect, true),
-                          p: 1,
-                          mb: 0.75,
-                          border: '1px solid',
-                          borderColor: isCorrect ? '#43a047' : isChosen ? '#e53935' : '#e0e0e0',
-                          bgcolor: isCorrect ? '#e8f5e9' : isChosen ? '#fce4ec' : 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
-                      >
-                        <Typography variant="body2">{opt}</Typography>
-                        {isCorrect && <CheckCircleIcon sx={{ color: '#43a047', fontSize: 16, ml: 'auto' }} />}
-                        {isChosen && !isCorrect && <CancelIcon sx={{ color: '#e53935', fontSize: 16, ml: 'auto' }} />}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )}
+              {hasOptions && renderOptionsReview(dialogNode.options, dialogNode.correctAnswer, reviewData?.answer)}
               {dialogNode?.hint && (
                 <Alert severity="info" icon={<LightbulbIcon />}>
                   <strong>Gợi ý:</strong> {dialogNode.hint}
@@ -861,7 +847,7 @@ export default function ExamMindMap() {
                 <Button
                   variant="contained"
                   color="success"
-                  onClick={() => completeAttempt(scoreDisplay)}
+                  onClick={() => { if (!submitting) completeAttempt(scoreDisplay); }}
                   size="large"
                   sx={{ flex: 1 }}
                   disabled={actionBusy}
@@ -946,7 +932,7 @@ export default function ExamMindMap() {
           </Button>
         </DialogActions>
 
-        {/* Loading overlay - full dialog */}
+        {/* Loading overlay trong dialog */}
         {submitting && (
           <Box
             sx={{
