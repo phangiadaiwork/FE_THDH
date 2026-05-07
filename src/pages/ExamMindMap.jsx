@@ -511,13 +511,29 @@ export default function ExamMindMap() {
         </Typography>
         <Chip label={`${scoreDisplay} điểm`} color="primary" variant="outlined" size="small" />
         <Chip label={`${answeredCount}/${totalNodes}`} color="secondary" variant="outlined" size="small" />
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            if (currentQueueNodeId) {
+              const node = rfNodes.find((n) => parseInt(n.id) === currentQueueNodeId);
+              if (rfInstanceRef.current && node) {
+                rfInstanceRef.current.setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 450 });
+              }
+            }
+          }}
+          disabled={finished || dfsQueue.length === 0}
+          sx={{ textTransform: 'none' }}
+        >
+          Tới câu sắp làm
+        </Button>
         <Tooltip title={!finished && dfsQueue.length > 0 ? 'Phải hoàn thành bài hiện tại trước' : ''}>
           <span>
             <Button
               size="small"
               variant="contained"
               color="success"
-              onClick={completeAttempt}
+              onClick={() => completeAttempt(scoreDisplay)}
               disabled={actionBusy || dfsQueue.length > 0 || finished}
               endIcon={submitting ? <CircularProgress size={16} /> : undefined}
               sx={{ textTransform: 'none' }}
@@ -570,6 +586,30 @@ export default function ExamMindMap() {
         </ReactFlow>
 
         {/* Nhóm nút điều hướng góc phải dưới */}
+        {(submitting || resetting) && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(255, 255, 255, 0.85)',
+              zIndex: 50,
+              borderRadius: '4px',
+            }}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress size={50} />
+              <Typography sx={{ mt: 2 }} color="text.secondary">
+                {resetting ? 'Đang tạo lại bài thi...' : 'Đang lưu kết quả...'}
+              </Typography>
+            </Box>
+          </Box>
+        )}
         <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, zIndex: 10 }}>
           {/* FAB mở câu hỏi hiện tại */}
           {!finished && currentQueueNodeId && dialogNodeId === null && (
