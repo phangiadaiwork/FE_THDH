@@ -467,7 +467,7 @@ export default function ExamMindMap() {
 
   const currentQueueNodeId = dfsQueue[0] ?? null;
   const answeredCount = totalNodes - dfsQueue.length;
-  const progress = totalNodes > 0 ? Math.round((answeredCount / totalNodes) * 100) : 0;
+  const progress = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
 
   const completedCount = useMemo(
     () => Object.values(nodeStatuses).filter(s => s === 'correct' || s === 'incorrect').length,
@@ -624,7 +624,7 @@ export default function ExamMindMap() {
           sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
         />
         <Chip
-          label={`${answeredCount}/${totalNodes}`}
+          label={`${completedCount}/${totalNodes}`}
           color="secondary"
           variant="outlined"
           size="small"
