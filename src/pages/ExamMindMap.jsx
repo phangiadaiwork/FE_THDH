@@ -328,13 +328,20 @@ export default function ExamMindMap() {
     const status = nodeStatuses[nid];
     if (status === 'locked') return;
 
-    setDialogNodeId(nid);
-    if (status === 'current') {
-      blockRef.current = false;
-      setAnswer('');
-      setAnswerResult(null);
+    // Nếu ấn node khác node hiện tại
+    if (nid !== currentQueueNodeId && answerResult !== null) {
+      // Node hiện tại đã trả lời → auto advance dfsQueue
+      handleContinue();
+    } else {
+      // Node hiện tại hoặc node review
+      setDialogNodeId(nid);
+      if (status === 'current') {
+        blockRef.current = false;
+        setAnswer('');
+        setAnswerResult(null);
+      }
     }
-  }, [nodeStatuses]);
+  }, [nodeStatuses, currentQueueNodeId, answerResult, handleContinue]);
 
   const closeDialog = () => {
     setDialogNodeId(null);
