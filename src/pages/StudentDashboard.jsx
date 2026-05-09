@@ -483,7 +483,7 @@ export default function StudentDashboard() {
                         <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: { xs: '0.8rem', md: '0.9rem' } }}>
                           Nhấn vào nút bên dưới để mở cây sơ đồ tư duy và luyện tập theo đúng thứ tự DFS.
                         </Typography>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1, display: { xs: 'none', lg: 'flex' } }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1, mt: 2 }}>
                           <Button
                             variant="contained"
                             startIcon={<AccountTreeIcon />}
