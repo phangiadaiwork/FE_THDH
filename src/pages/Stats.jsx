@@ -63,6 +63,7 @@ export default function Stats() {
   // Node Stats State
   const [nodeStatsLoading, setNodeStatsLoading] = useState(false);
   const [nodeStats, setNodeStats] = useState([]);
+  const [studentMistakes, setStudentMistakes] = useState([]);
 
   useEffect(() => {
     const loadFilters = async () => {
@@ -116,7 +117,7 @@ export default function Stats() {
 
   // Node stats fetcher
   useEffect(() => {
-    if (tab === 2 && tabLessonFilter) {
+    if ((tab === 1 || tab === 2) && tabLessonFilter && tabLessonFilter !== 'ALL') {
       const fetchNodeStats = async () => {
         setNodeStatsLoading(true);
         try {
@@ -124,6 +125,7 @@ export default function Stats() {
           if (tabClassFilter !== 'ALL') params.classId = tabClassFilter;
           const { data } = await api.get('/api/attempts/node-stats', { params });
           setNodeStats(data.nodeStats || []);
+          setStudentMistakes(data.studentMistakes || []);
         } catch (err) {
           console.error(err);
         } finally {
@@ -158,21 +160,22 @@ export default function Stats() {
     });
   }, [dashboardVisible, availableClassesInGrade, rows, tabLessonFilter]);
 
-  // Tab 2: Weak Students Data
-  const weakStudents = useMemo(() => {
-    if (!dashboardVisible) return [];
-    const filteredRows = tabClassFilter === 'ALL' ? rows : rows.filter(r => r.classId === tabClassFilter);
-    return filteredRows.map(student => {
-      const completed = student.lessonStats.filter(ls => ls.status === 'COMPLETED');
-      const avg = completed.length > 0 
-        ? parseFloat((completed.reduce((sum, ls) => sum + ls.avgScore, 0) / completed.length).toFixed(2))
-        : 0;
-      const weakestLesson = completed.sort((a, b) => a.avgScore - b.avgScore)[0];
-      return { ...student, overallAvg: avg, weakestLesson, completedCount: completed.length };
-    })
-    .filter(s => s.completedCount > 0 && s.overallAvg < 6.5) // Focus on average < 6.5
-    .sort((a, b) => a.overallAvg - b.overallAvg);
-  }, [dashboardVisible, rows, tabClassFilter]);
+  // Tab 1: Score Distribution Data
+  const scoreDistribution = useMemo(() => {
+    const bins = { '0-4': 0, '5-6': 0, '7-8': 0, '9-10': 0 };
+    studentMistakes.forEach(s => {
+      if (s.score < 5) bins['0-4']++;
+      else if (s.score < 7) bins['5-6']++;
+      else if (s.score < 9) bins['7-8']++;
+      else bins['9-10']++;
+    });
+    return [
+      { name: 'Yếu (0-4)', count: bins['0-4'], fill: '#d32f2f' },
+      { name: 'Trung bình (5-6)', count: bins['5-6'], fill: '#ed6c02' },
+      { name: 'Khá (7-8)', count: bins['7-8'], fill: '#2e7d32' },
+      { name: 'Giỏi (9-10)', count: bins['9-10'], fill: '#0288d1' },
+    ];
+  }, [studentMistakes]);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f7f1e8', pb: 8 }}>
@@ -266,7 +269,7 @@ export default function Stats() {
             <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white' }}>
               <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto" sx={{ '& .MuiTab-root': { py: 2.5, fontWeight: 600 } }}>
                 <Tab icon={<BarChartIcon />} iconPosition="start" label="Tổng quan Khối & So sánh Lớp" />
-                <Tab icon={<PeopleIcon />} iconPosition="start" label="Học sinh cần chú ý" />
+                <Tab icon={<PeopleIcon />} iconPosition="start" label="Chi tiết Học sinh & Lỗi sai" />
                 <Tab icon={<WarningIcon />} iconPosition="start" label="Phân tích Điểm mù kiến thức" />
               </Tabs>
             </Box>
@@ -301,11 +304,18 @@ export default function Stats() {
                 </Box>
               )}
 
-              {/* TAB 2: WEAK STUDENTS */}
+              {/* TAB 2: STUDENT DETAILS & MISTAKES */}
               {tab === 1 && (
                 <Box>
-                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
-                    <Typography variant="h6" fontWeight={700}>Học sinh có điểm trung bình thấp (&lt; 6.5)</Typography>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>Chi tiết Học sinh & Câu trả lời sai</Typography>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Bài học</InputLabel>
+                      <Select value={tabLessonFilter} label="Bài học" onChange={(e) => setTabLessonFilter(e.target.value)}>
+                        <MenuItem value="ALL" disabled>-- Chọn bài học --</MenuItem>
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                      </Select>
+                    </FormControl>
                     <FormControl size="small" sx={{ minWidth: 200 }}>
                       <InputLabel>Lọc theo Lớp</InputLabel>
                       <Select value={tabClassFilter} label="Lọc theo Lớp" onChange={(e) => setTabClassFilter(e.target.value)}>
@@ -314,43 +324,80 @@ export default function Stats() {
                       </Select>
                     </FormControl>
                   </Stack>
-                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-                    <Table>
-                      <TableHead sx={{ bgcolor: '#f7f1e8' }}>
-                        <TableRow>
-                          <TableCell><b>Học sinh</b></TableCell>
-                          <TableCell><b>Lớp</b></TableCell>
-                          <TableCell align="center"><b>ĐTB Tích lũy</b></TableCell>
-                          <TableCell><b>Bài làm kém nhất (Cần ôn tập)</b></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {weakStudents.length === 0 ? (
-                          <TableRow><TableCell colSpan={4} align="center" sx={{ py: 3 }}>Tuyệt vời! Không có học sinh nào đạt điểm yếu.</TableCell></TableRow>
-                        ) : (
-                          weakStudents.map((s) => (
-                            <TableRow key={s.studentId}>
-                              <TableCell>{s.fullName}</TableCell>
-                              <TableCell>{s.className}</TableCell>
-                              <TableCell align="center">
-                                <Chip label={s.overallAvg} color="error" size="small" sx={{ fontWeight: 700 }} />
-                              </TableCell>
-                              <TableCell>
-                                {s.weakestLesson ? (
-                                  <Stack direction="row" spacing={1} alignItems="center">
-                                    <AssignmentLateIcon color="warning" fontSize="small" />
-                                    <Typography variant="body2">
-                                      {lessons.find(l => l.id === s.weakestLesson.examId)?.lessonTitle} ({s.weakestLesson.avgScore}đ)
-                                    </Typography>
-                                  </Stack>
-                                ) : '-'}
-                              </TableCell>
+
+                  {tabLessonFilter === 'ALL' || !tabLessonFilter ? (
+                    <Alert severity="info" sx={{ mb: 3 }}>Vui lòng chọn một Bài học cụ thể để xem phân tích chi tiết.</Alert>
+                  ) : nodeStatsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+                  ) : (
+                    <>
+                      <Grid container spacing={3} sx={{ mb: 4 }}>
+                        <Grid item xs={12} md={6} lg={4}>
+                          <Paper variant="outlined" sx={{ p: 2, height: '100%', borderRadius: 3 }}>
+                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2, textAlign: 'center' }}>
+                              Phân bố điểm số
+                            </Typography>
+                            <Box sx={{ height: 250 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={scoreDistribution} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                    {scoreDistribution.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                    <LabelList dataKey="count" position="top" />
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      </Grid>
+
+                      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                        <Table>
+                          <TableHead sx={{ bgcolor: '#f7f1e8' }}>
+                            <TableRow>
+                              <TableCell width="20%"><b>Học sinh</b></TableCell>
+                              <TableCell width="15%"><b>Lớp</b></TableCell>
+                              <TableCell width="10%" align="center"><b>Điểm</b></TableCell>
+                              <TableCell width="55%"><b>Các câu làm sai (Cần ôn tập)</b></TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                          </TableHead>
+                          <TableBody>
+                            {studentMistakes.length === 0 ? (
+                              <TableRow><TableCell colSpan={4} align="center" sx={{ py: 3 }}>Chưa có học sinh nào làm bài này.</TableCell></TableRow>
+                            ) : (
+                              studentMistakes.map((s) => (
+                                <TableRow key={s.studentId}>
+                                  <TableCell>{s.fullName}</TableCell>
+                                  <TableCell>{s.className}</TableCell>
+                                  <TableCell align="center">
+                                    <Chip label={s.score} color={s.score >= 8 ? 'success' : s.score >= 5 ? 'warning' : 'error'} size="small" sx={{ fontWeight: 700 }} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                                      {s.wrongAnswers.map(wa => (
+                                        <Tooltip key={wa.nodeId} title={wa.question || 'Không có nội dung câu hỏi'}>
+                                          <Chip label={wa.label} size="small" variant="outlined" color="error" />
+                                        </Tooltip>
+                                      ))}
+                                      {s.wrongAnswers.length === 0 && (
+                                        <Typography variant="body2" color="success.main" fontWeight={600}>Hoàn hảo! Không sai câu nào.</Typography>
+                                      )}
+                                    </Stack>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
                 </Box>
               )}
 
