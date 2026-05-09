@@ -317,8 +317,8 @@ export default function StudentDashboard() {
               </Grid>
             </Paper>
 
-            <Grid container spacing={3} sx={{ display: 'block' }}>
-              <Grid item xs={12} lg={4} sx={{ display: { xs: mobileViewDetail ? 'none' : 'block', lg: 'block' }, mb: { xs: 0, lg: 'auto' } }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} lg={4} sx={{ display: { xs: mobileViewDetail ? 'none' : 'block', lg: 'block' } }}>
                 <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { lg: 'calc(100vh - 380px)' }, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 0.5, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
                     Danh sách bài học
