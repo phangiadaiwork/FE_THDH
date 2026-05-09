@@ -83,6 +83,19 @@ function getApiErrorMessage(error, fallbackMessage) {
   return error?.message || fallbackMessage;
 }
 
+function getBulkErrorsMessage(responseData) {
+  if (!Array.isArray(responseData?.errors) || responseData.errors.length === 0) {
+    return '';
+  }
+
+  return responseData.errors
+    .map((item) => {
+      const prefix = item?.username || `Dòng ${item?.rowNumber || '?'}`;
+      return item?.error ? `${prefix}: ${item.error}` : prefix;
+    })
+    .join('; ');
+}
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -230,9 +243,16 @@ export default function TeacherDashboard() {
 
     setFormLoading(true);
     try {
-      await api.post('/api/students/bulk', {
+      const { data } = await api.post('/api/students/bulk', {
         students: [formData],
       });
+
+      const bulkErrorsMessage = getBulkErrorsMessage(data);
+      if (bulkErrorsMessage) {
+        setFormError(bulkErrorsMessage);
+        return;
+      }
+
       setFormOpen(false);
       setFormData({
         username: '',
@@ -275,11 +295,18 @@ export default function TeacherDashboard() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      await api.post('/api/students/import', formData, {
+      const { data: importData } = await api.post('/api/students/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const { data } = await api.get('/api/attempts/stats');
-      setClasses(data.classes || []);
+
+      const bulkErrorsMessage = getBulkErrorsMessage(importData);
+      if (bulkErrorsMessage) {
+        setImportError(bulkErrorsMessage);
+        return;
+      }
+
+      const { data: statsData } = await api.get('/api/attempts/stats');
+      setClasses(statsData.classes || []);
       setImportSuccess('Import học sinh thành công!');
       setTimeout(() => setImportSuccess(''), 4000);
     } catch (err) {
