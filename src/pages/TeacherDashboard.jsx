@@ -483,32 +483,6 @@ export default function TeacherDashboard() {
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         {importError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setImportError('')}>{importError}</Alert>}
 
-        <Grid container spacing={2} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ borderRadius: 4 }}>
-              <CardContent>
-                <Typography color="text.secondary">Bài học</Typography>
-                <Typography variant="h4" fontWeight={800}>{lessons.length}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ borderRadius: 4 }}>
-              <CardContent>
-                <Typography color="text.secondary">Node bài tập</Typography>
-                <Typography variant="h4" fontWeight={800}>{totalNodes}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card sx={{ borderRadius: 4 }}>
-              <CardContent>
-                <Typography color="text.secondary">Lớp học đang quản lý</Typography>
-                <Typography variant="h4" fontWeight={800}>{classes.length}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
 
         <Typography variant="h5" fontWeight={800} sx={{ mb: 2, color: '#5d3c15' }}>
           Danh sách bài học
@@ -595,57 +569,57 @@ export default function TeacherDashboard() {
 
             <Grid container spacing={2.5}>
               {visibleLessons.map((lesson) => (
-              <Grid item xs={12} md={6} xl={4} key={lesson.id}>
-                <Card sx={{ borderRadius: 4, height: '100%', border: '1px solid #efdfc6' }}>
-                  <CardContent>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
-                      <Chip label={`Lớp ${lesson.gradeLevel}`} size="small" sx={{ bgcolor: '#fff0d9' }} />
-                      <Chip label={lesson.chapterTitle} size="small" sx={{ bgcolor: '#fff0d9' }} />
-                    </Stack>
+                <Grid item xs={12} md={6} xl={4} key={lesson.id}>
+                  <Card sx={{ borderRadius: 4, height: '100%', border: '1px solid #efdfc6' }}>
+                    <CardContent>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+                        <Chip label={`Lớp ${lesson.gradeLevel}`} size="small" sx={{ bgcolor: '#fff0d9' }} />
+                        <Chip label={lesson.chapterTitle} size="small" sx={{ bgcolor: '#fff0d9' }} />
+                      </Stack>
 
-                    <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15' }}>
-                      {lesson.lessonTitle}
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 1, minHeight: 48 }}>
-                      {lesson.theoryContent?.slice(0, 120) || 'Chưa có phần lý thuyết.'}
-                      {lesson.theoryContent?.length > 120 ? '...' : ''}
-                    </Typography>
+                      <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15' }}>
+                        {lesson.lessonTitle}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 1, minHeight: 48 }}>
+                        {lesson.theoryContent?.slice(0, 120) || 'Chưa có phần lý thuyết.'}
+                        {lesson.theoryContent?.length > 120 ? '...' : ''}
+                      </Typography>
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
-                      <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount} node`} size="small" variant="outlined" />
-                      <Chip icon={<VisibilityIcon />} label={lesson.isPublic ? 'Công khai' : `${lesson.assignedClasses?.length || 0} lớp`} size="small" variant="outlined" />
-                    </Stack>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
-                    <Button size="small" onClick={() => openVisibilityDialog(lesson)}>
-                      Phạm vi hiển thị
-                    </Button>
-                    <Box>
-                      <Tooltip title="Sửa bài học">
-                        <IconButton color="primary" onClick={() => navigate(`/teacher/edit-exam/${lesson.id}`)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Xóa bài học">
-                        <IconButton color="error" onClick={() => handleDelete(lesson.id)} disabled={deleteLoading === lesson.id}>
-                          {deleteLoading === lesson.id ? <CircularProgress size={18} /> : <DeleteIcon />}
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
+                        <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount} node`} size="small" variant="outlined" />
+                        <Chip icon={<VisibilityIcon />} label={lesson.isPublic ? 'Công khai' : `${lesson.assignedClasses?.length || 0} lớp`} size="small" variant="outlined" />
+                      </Stack>
+                    </CardContent>
+                    <Divider />
+                    <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
+                      <Button size="small" onClick={() => openVisibilityDialog(lesson)}>
+                        Phạm vi hiển thị
+                      </Button>
+                      <Box>
+                        <Tooltip title="Sửa bài học">
+                          <IconButton color="primary" onClick={() => navigate(`/teacher/edit-exam/${lesson.id}`)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Xóa bài học">
+                          <IconButton color="error" onClick={() => handleDelete(lesson.id)} disabled={deleteLoading === lesson.id}>
+                            {deleteLoading === lesson.id ? <CircularProgress size={18} /> : <DeleteIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
 
-          {visibleLessons.length === 0 && (
-            <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce' }}>
-              <Typography color="text.secondary">
-                Không có bài nào khớp bộ lọc hiện tại.
-              </Typography>
-            </Paper>
-          )}
+            {visibleLessons.length === 0 && (
+              <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce' }}>
+                <Typography color="text.secondary">
+                  Không có bài nào khớp bộ lọc hiện tại.
+                </Typography>
+              </Paper>
+            )}
           </>
         )}
       </Container>
