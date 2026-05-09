@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
@@ -15,10 +15,14 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   FormControlLabel,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Switch,
   TextField,
@@ -38,6 +42,25 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
+const GRADE_OPTIONS = ['10', '11', '12'];
+
+function sortLessons(lessons, sortBy) {
+  const cloned = [...lessons];
+  return cloned.sort((a, b) => {
+    if (sortBy === 'chapter') {
+      return (a.chapterDisplayOrder ?? 999) - (b.chapterDisplayOrder ?? 999) || a.chapterTitle.localeCompare(b.chapterTitle, 'vi');
+    }
+
+    if (sortBy === 'score') {
+      const scoreA = a.avgScore ?? -1;
+      const scoreB = b.avgScore ?? -1;
+      return scoreB - scoreA;
+    }
+
+    return (a.lessonNumber ?? 999) - (b.lessonNumber ?? 999) || a.lessonTitle.localeCompare(b.lessonTitle, 'vi');
+  });
+}
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -53,6 +76,10 @@ export default function TeacherDashboard() {
   const [visClasses, setVisClasses] = useState([]);
   const [visSaving, setVisSaving] = useState(false);
   const [importingStudents, setImportingStudents] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState('12');
+  const [selectedChapterKey, setSelectedChapterKey] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const [searchQuery, setSearchQuery] = useState('');
   const studentFileRef = useRef(null);
 
   useEffect(() => {
@@ -62,8 +89,11 @@ export default function TeacherDashboard() {
           api.get('/api/exams'),
           api.get('/api/attempts/stats'),
         ]);
-        setLessons(examRes.data || []);
+        const exams = examRes.data || [];
+        setLessons(exams);
         setClasses(statsRes.data.classes || []);
+        const preferredGrade = exams[0]?.gradeLevel || '12';
+        setSelectedGrade(preferredGrade);
       } catch (err) {
         console.error(err);
         setError('Không thể tải dữ liệu bảng điều khiển.');
@@ -74,6 +104,76 @@ export default function TeacherDashboard() {
 
     load();
   }, []);
+
+  const gradeStats = useMemo(
+    () =>
+      GRADE_OPTIONS.map((gradeLevel) => {
+        const lessonsInGrade = lessons.filter((lesson) => lesson.gradeLevel === gradeLevel);
+        const chapterCount = new Set(lessonsInGrade.map((lesson) => lesson.chapterCode)).size;
+        return {
+          gradeLevel,
+          lessonCount: lessonsInGrade.length,
+          chapterCount,
+        };
+      }),
+    [lessons]
+  );
+
+  const chapters = useMemo(() => {
+    const lessonPool = lessons.filter((lesson) => lesson.gradeLevel === selectedGrade);
+    const grouped = lessonPool.reduce((acc, lesson) => {
+      const key = `${lesson.gradeLevel}-${lesson.chapterCode}`;
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          chapterCode: lesson.chapterCode,
+          chapterTitle: lesson.chapterTitle,
+          gradeLevel: lesson.gradeLevel,
+          lessons: [],
+        };
+      }
+      acc[key].lessons.push(lesson);
+      return acc;
+    }, {});
+
+    return Object.values(grouped)
+      .map((chapter) => ({
+        ...chapter,
+        lessons: sortLessons(chapter.lessons, 'default'),
+      }))
+      .sort((a, b) => {
+        const firstA = a.lessons[0];
+        const firstB = b.lessons[0];
+        return (
+          (firstA?.chapterDisplayOrder ?? 999) - (firstB?.chapterDisplayOrder ?? 999) ||
+          a.chapterTitle.localeCompare(b.chapterTitle, 'vi')
+        );
+      });
+  }, [lessons, selectedGrade]);
+
+  useEffect(() => {
+    if (!selectedGrade) return;
+    const firstChapter = chapters[0]?.key || '';
+    setSelectedChapterKey((current) =>
+      current && chapters.some((chapter) => chapter.key === current) ? current : firstChapter
+    );
+  }, [chapters, selectedGrade]);
+
+  const visibleLessons = useMemo(() => {
+    const chapter = chapters.find((item) => item.key === selectedChapterKey);
+    const lessonPool = chapter?.lessons || [];
+    const filtered = lessonPool.filter((lesson) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          lesson.lessonTitle.toLowerCase().includes(query) ||
+          (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+        );
+      }
+      return true;
+    });
+    return sortLessons(filtered, sortBy);
+  }, [chapters, selectedChapterKey, sortBy, searchQuery]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Bạn có chắc muốn xóa bài học này?')) return;
@@ -259,8 +359,82 @@ export default function TeacherDashboard() {
             <CircularProgress />
           </Box>
         ) : (
-          <Grid container spacing={2.5}>
-            {lessons.map((lesson) => (
+          <>
+            <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce', mb: 3 }}>
+              <Grid container spacing={1.5}>
+                <Grid item xs={6} sm={6} md={4}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Khối lớp</InputLabel>
+                    <Select
+                      value={selectedGrade}
+                      label="Khối lớp"
+                      onChange={(e) => setSelectedGrade(e.target.value)}
+                    >
+                      {gradeStats.map((grade) => (
+                        <MenuItem key={grade.gradeLevel} value={grade.gradeLevel}>
+                          Lớp {grade.gradeLevel} ({grade.lessonCount} bài)
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={6} sm={6} md={4}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Danh mục chương</InputLabel>
+                    <Select
+                      value={selectedChapterKey}
+                      label="Danh mục chương"
+                      onChange={(e) => setSelectedChapterKey(e.target.value)}
+                    >
+                      {chapters.length === 0 ? (
+                        <MenuItem value="" disabled>
+                          Chưa có chương nào
+                        </MenuItem>
+                      ) : (
+                        chapters.map((chapter) => (
+                          <MenuItem key={chapter.key} value={chapter.key}>
+                            {chapter.chapterTitle} ({chapter.lessons.length} bài)
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Sắp xếp</InputLabel>
+                    <Select value={sortBy} label="Sắp xếp" onChange={(e) => setSortBy(e.target.value)}>
+                      <MenuItem value="default">Theo số bài</MenuItem>
+                      <MenuItem value="chapter">Theo chương</MenuItem>
+                      <MenuItem value="score">Điểm trung bình</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm bài học..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #d9c1a0',
+                      fontSize: '0.85rem',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
+
+            <Grid container spacing={2.5}>
+              {visibleLessons.map((lesson) => (
               <Grid item xs={12} md={6} xl={4} key={lesson.id}>
                 <Card sx={{ borderRadius: 4, height: '100%', border: '1px solid #efdfc6' }}>
                   <CardContent>
@@ -298,6 +472,15 @@ export default function TeacherDashboard() {
               </Grid>
             ))}
           </Grid>
+
+          {visibleLessons.length === 0 && (
+            <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce' }}>
+              <Typography color="text.secondary">
+                Không có bài nào khớp bộ lọc hiện tại.
+              </Typography>
+            </Paper>
+          )}
+          </>
         )}
       </Container>
 
