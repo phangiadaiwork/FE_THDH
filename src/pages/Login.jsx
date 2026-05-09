@@ -87,10 +87,6 @@ function Login() {
             </Typography>
           </Box>
 
-          <Tabs value={tab} onChange={(_, v) => { setTab(v); setError(''); }} centered sx={{ mb: 3 }}>
-            <Tab label="Học sinh" />
-            <Tab label="Giáo viên" />
-          </Tabs>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>

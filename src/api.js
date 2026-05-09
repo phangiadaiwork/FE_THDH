@@ -19,11 +19,28 @@ api.interceptors.request.use((config) => {
 
 let isLoggingOut = false;
 
+const shouldRedirectToLogin = (config) => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (window.location.pathname === '/login') {
+    return false;
+  }
+
+  const requestUrl = config?.url || '';
+  if (requestUrl.includes('/api/auth/login')) {
+    return false;
+  }
+
+  return true;
+};
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    if ((status === 401 || status === 403) && !isLoggingOut) {
+    if ((status === 401 || status === 403) && !isLoggingOut && shouldRedirectToLogin(error.config)) {
       isLoggingOut = true;
       clearAuth();
       // Reset flag after redirect so fresh login works
