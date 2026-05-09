@@ -43,6 +43,11 @@ import Navbar from '../components/Navbar';
 import api from '../api';
 
 const GRADE_OPTIONS = ['10', '11', '12'];
+const ADD_OPTION_VALUES = {
+  className: '__add_class__',
+  school: '__add_school__',
+  academicYearName: '__add_academic_year__',
+};
 
 function sortLessons(lessons, sortBy) {
   const cloned = [...lessons];
@@ -100,6 +105,9 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [classOptions, setClassOptions] = useState([]);
+  const [schoolOptions, setSchoolOptions] = useState([]);
+  const [academicYearOptions, setAcademicYearOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -121,6 +129,10 @@ export default function TeacherDashboard() {
   const [importingStudents, setImportingStudents] = useState(false);
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
+  const [optionDialogOpen, setOptionDialogOpen] = useState(false);
+  const [optionDialogField, setOptionDialogField] = useState('');
+  const [optionDialogLabel, setOptionDialogLabel] = useState('');
+  const [optionDialogValue, setOptionDialogValue] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('12');
   const [selectedChapterKey, setSelectedChapterKey] = useState('');
   const [sortBy, setSortBy] = useState('default');
@@ -149,6 +161,16 @@ export default function TeacherDashboard() {
 
     load();
   }, []);
+
+  useEffect(() => {
+    const nextClassOptions = Array.from(new Set(classes.map((item) => item.name).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi'));
+    const nextSchoolOptions = Array.from(new Set(classes.map((item) => item.school).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi'));
+    const nextYearOptions = Array.from(new Set(classes.map((item) => item.academicYearName).filter(Boolean))).sort((a, b) => b.localeCompare(a, 'vi'));
+
+    setClassOptions((prev) => Array.from(new Set([...prev.filter(Boolean), ...nextClassOptions])).sort((a, b) => a.localeCompare(b, 'vi')));
+    setSchoolOptions((prev) => Array.from(new Set([...prev.filter(Boolean), ...nextSchoolOptions])).sort((a, b) => a.localeCompare(b, 'vi')));
+    setAcademicYearOptions((prev) => Array.from(new Set([...prev.filter(Boolean), ...nextYearOptions])).sort((a, b) => b.localeCompare(a, 'vi')));
+  }, [classes]);
 
   const gradeStats = useMemo(
     () =>
@@ -219,6 +241,52 @@ export default function TeacherDashboard() {
     });
     return sortLessons(filtered, sortBy);
   }, [chapters, selectedChapterKey, sortBy, searchQuery]);
+
+  const openAddOptionDialog = (field, label) => {
+    setOptionDialogField(field);
+    setOptionDialogLabel(label);
+    setOptionDialogValue('');
+    setOptionDialogOpen(true);
+  };
+
+  const handleAddOptionValue = () => {
+    const nextValue = optionDialogValue.trim();
+    if (!nextValue) return;
+
+    if (optionDialogField === 'className') {
+      setClassOptions((prev) => Array.from(new Set([...prev, nextValue])).sort((a, b) => a.localeCompare(b, 'vi')));
+    }
+
+    if (optionDialogField === 'school') {
+      setSchoolOptions((prev) => Array.from(new Set([...prev, nextValue])).sort((a, b) => a.localeCompare(b, 'vi')));
+    }
+
+    if (optionDialogField === 'academicYearName') {
+      setAcademicYearOptions((prev) => Array.from(new Set([...prev, nextValue])).sort((a, b) => b.localeCompare(a, 'vi')));
+    }
+
+    setFormData((prev) => ({ ...prev, [optionDialogField]: nextValue }));
+    setOptionDialogOpen(false);
+  };
+
+  const handleSelectChange = (field, value) => {
+    if (field === 'className' && value === ADD_OPTION_VALUES.className) {
+      openAddOptionDialog('className', 'Thêm lớp mới');
+      return;
+    }
+
+    if (field === 'school' && value === ADD_OPTION_VALUES.school) {
+      openAddOptionDialog('school', 'Thêm trường mới');
+      return;
+    }
+
+    if (field === 'academicYearName' && value === ADD_OPTION_VALUES.academicYearName) {
+      openAddOptionDialog('academicYearName', 'Thêm năm học mới');
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Bạn có chắc muốn xóa bài học này?')) return;
@@ -592,36 +660,107 @@ export default function TeacherDashboard() {
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               placeholder="Nguyễn Văn A"
             />
-            <TextField
-              fullWidth
-              label="Lớp"
-              size="small"
-              value={formData.className}
-              onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-              placeholder="12A1"
-            />
-            <TextField
-              fullWidth
-              label="Trường"
-              size="small"
-              value={formData.school}
-              onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-              placeholder="THPT Lê Lợi"
-            />
-            <TextField
-              fullWidth
-              label="Năm học"
-              size="small"
-              value={formData.academicYearName}
-              onChange={(e) => setFormData({ ...formData, academicYearName: e.target.value })}
-              placeholder="2025-2026"
-            />
+            <FormControl fullWidth size="small">
+              <InputLabel>Lớp</InputLabel>
+              <Select
+                value={formData.className}
+                label="Lớp"
+                onChange={(e) => handleSelectChange('className', e.target.value)}
+              >
+                {classOptions.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    Chưa có lớp nào
+                  </MenuItem>
+                ) : (
+                  classOptions.map((className) => (
+                    <MenuItem key={className} value={className}>
+                      {className}
+                    </MenuItem>
+                  ))
+                )}
+                <MenuItem value={ADD_OPTION_VALUES.className} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                  <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                  Thêm lớp mới...
+                </MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Trường</InputLabel>
+              <Select
+                value={formData.school}
+                label="Trường"
+                onChange={(e) => handleSelectChange('school', e.target.value)}
+              >
+                {schoolOptions.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    Chưa có trường nào
+                  </MenuItem>
+                ) : (
+                  schoolOptions.map((school) => (
+                    <MenuItem key={school} value={school}>
+                      {school}
+                    </MenuItem>
+                  ))
+                )}
+                <MenuItem value={ADD_OPTION_VALUES.school} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                  <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                  Thêm trường mới...
+                </MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Năm học</InputLabel>
+              <Select
+                value={formData.academicYearName}
+                label="Năm học"
+                onChange={(e) => handleSelectChange('academicYearName', e.target.value)}
+              >
+                {academicYearOptions.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    Chưa có năm học nào
+                  </MenuItem>
+                ) : (
+                  academicYearOptions.map((academicYearName) => (
+                    <MenuItem key={academicYearName} value={academicYearName}>
+                      {academicYearName}
+                    </MenuItem>
+                  ))
+                )}
+                <MenuItem value={ADD_OPTION_VALUES.academicYearName} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                  <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                  Thêm năm học mới...
+                </MenuItem>
+              </Select>
+            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFormOpen(false)}>Hủy</Button>
           <Button variant="contained" onClick={handleAddStudent} disabled={formLoading}>
             {formLoading ? <CircularProgress size={18} color="inherit" /> : 'Thêm học sinh'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={optionDialogOpen} onClose={() => setOptionDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{optionDialogLabel}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            value={optionDialogValue}
+            onChange={(e) => setOptionDialogValue(e.target.value)}
+            placeholder={`Nhập ${optionDialogLabel.toLowerCase()}`}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOptionDialogOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleAddOptionValue} disabled={!optionDialogValue.trim()}>
+            Thêm
           </Button>
         </DialogActions>
       </Dialog>
