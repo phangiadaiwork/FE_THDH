@@ -67,9 +67,17 @@ export default function TeacherDashboard() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkText, setBulkText] = useState('');
-  const [bulkLoading, setBulkLoading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    fullName: '',
+    className: '',
+    school: '',
+    academicYearName: '',
+  });
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(null);
   const [visLesson, setVisLesson] = useState(null);
   const [visPublic, setVisPublic] = useState(true);
@@ -188,27 +196,35 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleBulkCreate = async () => {
-    const students = bulkText
-      .trim()
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const [username, password, fullName, className, school, academicYearName] = line.split(',').map((part) => part.trim());
-        return { username, password, fullName, className, school, academicYearName };
-      });
+  const handleAddStudent = async () => {
+    setFormError('');
 
-    setBulkLoading(true);
+    if (!formData.username.trim() || !formData.password.trim() || !formData.fullName.trim() || !formData.className.trim()) {
+      setFormError('Vui lòng điền đầy đủ thông tin: tài khoản, mật khẩu, họ tên, lớp.');
+      return;
+    }
+
+    setFormLoading(true);
     try {
-      await api.post('/api/students/bulk', { students });
-      setBulkOpen(false);
-      setBulkText('');
+      await api.post('/api/students/bulk', {
+        students: [formData],
+      });
+      setFormOpen(false);
+      setFormData({
+        username: '',
+        password: '',
+        fullName: '',
+        className: '',
+        school: '',
+        academicYearName: '',
+      });
       const { data } = await api.get('/api/attempts/stats');
       setClasses(data.classes || []);
+      alert('Tạo tài khoản học sinh thành công!');
     } catch (err) {
-      alert(err.response?.data?.error || 'Tạo tài khoản thất bại.');
+      setFormError(err.response?.data?.error || 'Tạo tài khoản thất bại.');
     } finally {
-      setBulkLoading(false);
+      setFormLoading(false);
     }
   };
 
@@ -308,8 +324,8 @@ export default function TeacherDashboard() {
           </Stack>
 
           <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" startIcon={<PeopleIcon />} onClick={() => setBulkOpen(true)} sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.45)' }}>
-              Tạo tài khoản CSV
+            <Button variant="outlined" startIcon={<PeopleIcon />} onClick={() => setFormOpen(true)} sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.45)' }}>
+              Nhập học sinh
             </Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={downloadStudentTemplate} sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.45)' }}>
               Tải mẫu học sinh
@@ -484,25 +500,70 @@ export default function TeacherDashboard() {
         )}
       </Container>
 
-      <Dialog open={bulkOpen} onClose={() => setBulkOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Tạo tài khoản học sinh bằng CSV</DialogTitle>
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Nhập học sinh mới</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Mỗi dòng theo mẫu: username,password,họ tên,lớp,trường,năm học
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={10}
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            placeholder="hs12a1,123456,Nguyễn Văn A,12A1,THPT Lê Lợi,2025-2026"
-          />
+          {formError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {formError}
+            </Alert>
+          )}
+          <Stack spacing={1.5} sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Tài khoản"
+              size="small"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              placeholder="hs12a1"
+            />
+            <TextField
+              fullWidth
+              label="Mật khẩu"
+              type="password"
+              size="small"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="123456"
+            />
+            <TextField
+              fullWidth
+              label="Họ tên"
+              size="small"
+              value={formData.fullName}
+              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              placeholder="Nguyễn Văn A"
+            />
+            <TextField
+              fullWidth
+              label="Lớp"
+              size="small"
+              value={formData.className}
+              onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+              placeholder="12A1"
+            />
+            <TextField
+              fullWidth
+              label="Trường"
+              size="small"
+              value={formData.school}
+              onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+              placeholder="THPT Lê Lợi"
+            />
+            <TextField
+              fullWidth
+              label="Năm học"
+              size="small"
+              value={formData.academicYearName}
+              onChange={(e) => setFormData({ ...formData, academicYearName: e.target.value })}
+              placeholder="2025-2026"
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBulkOpen(false)}>Đóng</Button>
-          <Button variant="contained" onClick={handleBulkCreate} disabled={bulkLoading || !bulkText.trim()}>
-            {bulkLoading ? <CircularProgress size={18} color="inherit" /> : 'Tạo tài khoản'}
+          <Button onClick={() => setFormOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleAddStudent} disabled={formLoading}>
+            {formLoading ? <CircularProgress size={18} color="inherit" /> : 'Thêm học sinh'}
           </Button>
         </DialogActions>
       </Dialog>
