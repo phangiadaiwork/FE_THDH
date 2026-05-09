@@ -262,8 +262,8 @@ export default function TeacherDashboard() {
         school: '',
         academicYearName: '',
       });
-      const { data } = await api.get('/api/attempts/stats');
-      setClasses(data.classes || []);
+      const { data: statsData } = await api.get('/api/attempts/stats');
+      setClasses(statsData.classes || []);
     } catch (err) {
       const errorMessage = getApiErrorMessage(err, 'Tạo tài khoản thất bại.');
       setFormError(errorMessage);
