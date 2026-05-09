@@ -95,6 +95,7 @@ export default function CreateExam() {
   const [saveError, setSaveError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [importing, setImporting] = useState(false);
+  const [showCanvasMobile, setShowCanvasMobile] = useState(false);
 
   const [gradeLevel, setGradeLevel] = useState('12');
   const [chapterTitle, setChapterTitle] = useState('Động học');
@@ -463,6 +464,18 @@ export default function CreateExam() {
 
       <Box sx={{ flex: 1, overflow: { xs: 'auto', lg: 'hidden' }, opacity: (importing || saving) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
         <Grid container sx={{ height: { xs: 'auto', lg: '100%' } }}>
+          <Grid item xs={12} sx={{ order: { xs: 0, lg: -1 }, display: { xs: 'block', lg: 'none' }, p: 1.5, borderBottom: '1px solid #eadcc5' }}>
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              color="primary" 
+              onClick={() => setShowCanvasMobile(!showCanvasMobile)}
+              startIcon={<AccountTreeIcon />}
+              sx={{ bgcolor: '#fff', '&:hover': { bgcolor: '#fff0d9' } }}
+            >
+              {showCanvasMobile ? 'Ẩn sơ đồ tư duy' : 'Mở sơ đồ tư duy (Kéo thả)'}
+            </Button>
+          </Grid>
           <Grid item xs={12} lg={4} sx={{ order: { xs: 2, lg: 1 }, height: { xs: 'auto', lg: '100%' }, overflowY: { xs: 'visible', lg: 'auto' }, borderRight: { lg: '1px solid #eadcc5' } }}>
             <Box sx={{ p: { xs: 1.5, lg: 2.5 } }}>
               <Paper sx={{ p: 2.5, borderRadius: 4, mb: 2 }}>
@@ -624,7 +637,7 @@ export default function CreateExam() {
             </Box>
           </Grid>
 
-          <Grid item xs={12} lg={8} sx={{ order: { xs: 1, lg: 2 }, height: { xs: '450px', md: '600px', lg: '100%' }, borderBottom: { xs: '2px solid #eadcc5', lg: 'none' } }}>
+          <Grid item xs={12} lg={8} sx={{ display: { xs: showCanvasMobile ? 'block' : 'none', lg: 'block' }, order: { xs: 1, lg: 2 }, height: { xs: '450px', md: '600px', lg: '100%' }, borderBottom: { xs: '2px solid #eadcc5', lg: 'none' } }}>
             <Box sx={{ height: '100%', width: '100%' }}>
               <ReactFlow
                 nodes={rfNodes}
