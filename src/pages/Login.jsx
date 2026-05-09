@@ -20,7 +20,6 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import api from '../api';
 
 function Login() {
-  const [tab, setTab] = useState(0); // 0 = học sinh, 1 = giáo viên
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -103,7 +102,7 @@ function Login() {
               margin="normal"
               required
               autoFocus
-              placeholder={tab === 1 ? 'admin' : 'Nhập tên đăng nhập'}
+              placeholder={'Nhập tên đăng nhập'}
               disabled={loading}
             />
             <TextField
@@ -137,11 +136,6 @@ function Login() {
             </Button>
           </form>
 
-          {tab === 1 && (
-            <Typography variant="caption" color="text.secondary" display="block" textAlign="center" sx={{ mt: 2 }}>
-              Tài khoản mặc định: admin / admin123
-            </Typography>
-          )}
         </Paper>
       </Container>
     </Box>
