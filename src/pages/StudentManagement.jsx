@@ -34,12 +34,19 @@ import EditIcon from '@mui/icons-material/Edit';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import SearchIcon from '@mui/icons-material/Search';
 import PeopleIcon from '@mui/icons-material/People';
+import AddIcon from '@mui/icons-material/Add';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
 function getApiErrorMessage(error, fallbackMessage) {
   return error?.response?.data?.error || error?.message || fallbackMessage;
 }
+
+const ADD_OPTION_VALUES = {
+  className: '__add_class__',
+  school: '__add_school__',
+  academicYearName: '__add_academic_year__',
+};
 
 export default function StudentManagement() {
   const [students, setStudents] = useState([]);
@@ -49,6 +56,9 @@ export default function StudentManagement() {
   const [filterClass, setFilterClass] = useState('');
   const [filterSchool, setFilterSchool] = useState('');
   const [filterAcademicYear, setFilterAcademicYear] = useState('');
+  const [classOptions, setClassOptions] = useState([]);
+  const [schoolOptions, setSchoolOptions] = useState([]);
+  const [academicYearOptions, setAcademicYearOptions] = useState([]);
 
   // Edit dialog
   const [editStudent, setEditStudent] = useState(null);
@@ -64,6 +74,10 @@ export default function StudentManagement() {
 
   const [deleteLoading, setDeleteLoading] = useState(null);
   const [feedback, setFeedback] = useState({ severity: '', message: '' });
+  const [optionDialogOpen, setOptionDialogOpen] = useState(false);
+  const [optionDialogField, setOptionDialogField] = useState('');
+  const [optionDialogLabel, setOptionDialogLabel] = useState('');
+  const [optionDialogValue, setOptionDialogValue] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,6 +86,16 @@ export default function StudentManagement() {
       .catch(() => setError('Không thể tải danh sách học sinh'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const nextClassOptions = [...new Set(students.map((s) => s.className).filter(Boolean))].sort();
+    const nextSchoolOptions = [...new Set(students.map((s) => s.school).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
+    const nextAcademicYearOptions = [...new Set(students.map((s) => s.academicYearName).filter(Boolean))].sort((a, b) => b.localeCompare(a, 'vi'));
+
+    setClassOptions((prev) => [...new Set([...prev, ...nextClassOptions])].sort());
+    setSchoolOptions((prev) => [...new Set([...prev, ...nextSchoolOptions])].sort((a, b) => a.localeCompare(b, 'vi')));
+    setAcademicYearOptions((prev) => [...new Set([...prev, ...nextAcademicYearOptions])].sort((a, b) => b.localeCompare(a, 'vi')));
+  }, [students]);
 
   const classes = [...new Set(students.map((s) => s.className).filter(Boolean))].sort();
   const schools = [...new Set(students.map((s) => s.school).filter(Boolean))].sort();
@@ -140,6 +164,52 @@ export default function StudentManagement() {
     } finally {
       setEditSaving(false);
     }
+  };
+
+  const openAddOptionDialog = (field, label) => {
+    setOptionDialogField(field);
+    setOptionDialogLabel(label);
+    setOptionDialogValue('');
+    setOptionDialogOpen(true);
+  };
+
+  const handleAddOptionValue = () => {
+    const nextValue = optionDialogValue.trim();
+    if (!nextValue) return;
+
+    if (optionDialogField === 'className') {
+      setClassOptions((prev) => [...new Set([...prev, nextValue])].sort());
+    }
+
+    if (optionDialogField === 'school') {
+      setSchoolOptions((prev) => [...new Set([...prev, nextValue])].sort((a, b) => a.localeCompare(b, 'vi')));
+    }
+
+    if (optionDialogField === 'academicYearName') {
+      setAcademicYearOptions((prev) => [...new Set([...prev, nextValue])].sort((a, b) => b.localeCompare(a, 'vi')));
+    }
+
+    setEditForm((prev) => ({ ...prev, [optionDialogField]: nextValue }));
+    setOptionDialogOpen(false);
+  };
+
+  const handleSelectChange = (field, value) => {
+    if (field === 'className' && value === ADD_OPTION_VALUES.className) {
+      openAddOptionDialog('className', 'Thêm lớp mới');
+      return;
+    }
+
+    if (field === 'school' && value === ADD_OPTION_VALUES.school) {
+      openAddOptionDialog('school', 'Thêm trường mới');
+      return;
+    }
+
+    if (field === 'academicYearName' && value === ADD_OPTION_VALUES.academicYearName) {
+      openAddOptionDialog('academicYearName', 'Thêm năm học mới');
+      return;
+    }
+
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
   // ── Đặt lại mật khẩu ────────────────────────────────────────────────────
@@ -298,15 +368,93 @@ export default function StudentManagement() {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField label="Username" value={editForm.username} onChange={(e) => setEditForm((p) => ({ ...p, username: e.target.value }))} size="small" fullWidth />
           <TextField label="Họ và tên" value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} size="small" fullWidth />
-          <TextField label="Lớp" value={editForm.className} onChange={(e) => setEditForm((p) => ({ ...p, className: e.target.value }))} size="small" fullWidth />
-          <TextField label="Năm học" value={editForm.academicYearName} onChange={(e) => setEditForm((p) => ({ ...p, academicYearName: e.target.value }))} size="small" fullWidth helperText="Ví dụ: 2025-2026" />
-          <TextField label="Trường" value={editForm.school} onChange={(e) => setEditForm((p) => ({ ...p, school: e.target.value }))} size="small" fullWidth />
+          <FormControl size="small" fullWidth>
+            <InputLabel>Lớp</InputLabel>
+            <Select value={editForm.className} label="Lớp" onChange={(e) => handleSelectChange('className', e.target.value)}>
+              {classOptions.length === 0 ? (
+                <MenuItem value="" disabled>
+                  Chưa có lớp nào
+                </MenuItem>
+              ) : (
+                classOptions.map((className) => (
+                  <MenuItem key={className} value={className}>
+                    {className}
+                  </MenuItem>
+                ))
+              )}
+              <MenuItem value={ADD_OPTION_VALUES.className} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                Thêm lớp mới...
+              </MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Năm học</InputLabel>
+            <Select value={editForm.academicYearName} label="Năm học" onChange={(e) => handleSelectChange('academicYearName', e.target.value)}>
+              {academicYearOptions.length === 0 ? (
+                <MenuItem value="" disabled>
+                  Chưa có năm học nào
+                </MenuItem>
+              ) : (
+                academicYearOptions.map((academicYearName) => (
+                  <MenuItem key={academicYearName} value={academicYearName}>
+                    {academicYearName}
+                  </MenuItem>
+                ))
+              )}
+              <MenuItem value={ADD_OPTION_VALUES.academicYearName} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                Thêm năm học mới...
+              </MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Trường</InputLabel>
+            <Select value={editForm.school} label="Trường" onChange={(e) => handleSelectChange('school', e.target.value)}>
+              {schoolOptions.length === 0 ? (
+                <MenuItem value="" disabled>
+                  Chưa có trường nào
+                </MenuItem>
+              ) : (
+                schoolOptions.map((school) => (
+                  <MenuItem key={school} value={school}>
+                    {school}
+                  </MenuItem>
+                ))
+              )}
+              <MenuItem value={ADD_OPTION_VALUES.school} sx={{ color: '#8c5c22', fontWeight: 700 }}>
+                <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                Thêm trường mới...
+              </MenuItem>
+            </Select>
+          </FormControl>
           {editError && <Alert severity="error">{editError}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditStudent(null)}>Hủy</Button>
           <Button variant="contained" onClick={handleEditSave} disabled={editSaving}>
             {editSaving ? <CircularProgress size={18} /> : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={optionDialogOpen} onClose={() => setOptionDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{optionDialogLabel}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            value={optionDialogValue}
+            onChange={(e) => setOptionDialogValue(e.target.value)}
+            placeholder={`Nhập ${optionDialogLabel.toLowerCase()}`}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOptionDialogOpen(false)}>Hủy</Button>
+          <Button variant="contained" onClick={handleAddOptionValue} disabled={!optionDialogValue.trim()}>
+            Thêm
           </Button>
         </DialogActions>
       </Dialog>
