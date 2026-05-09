@@ -37,12 +37,18 @@ import PeopleIcon from '@mui/icons-material/People';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
+function getApiErrorMessage(error, fallbackMessage) {
+  return error?.response?.data?.error || error?.message || fallbackMessage;
+}
+
 export default function StudentManagement() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterClass, setFilterClass] = useState('');
+  const [filterSchool, setFilterSchool] = useState('');
+  const [filterAcademicYear, setFilterAcademicYear] = useState('');
 
   // Edit dialog
   const [editStudent, setEditStudent] = useState(null);
@@ -57,6 +63,7 @@ export default function StudentManagement() {
   const [resetError, setResetError] = useState('');
 
   const [deleteLoading, setDeleteLoading] = useState(null);
+  const [feedback, setFeedback] = useState({ severity: '', message: '' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,25 +74,38 @@ export default function StudentManagement() {
   }, []);
 
   const classes = [...new Set(students.map((s) => s.className).filter(Boolean))].sort();
+  const schools = [...new Set(students.map((s) => s.school).filter(Boolean))].sort();
+  const academicYears = [...new Set(students.map((s) => s.academicYearName).filter(Boolean))].sort((a, b) => b.localeCompare(a, 'vi'));
+
+  const shouldApplyStructuredFilter = Boolean(filterClass && filterSchool && filterAcademicYear);
 
   const filtered = students.filter((s) => {
     const matchSearch =
       !search ||
       s.fullName?.toLowerCase().includes(search.toLowerCase()) ||
       s.username?.toLowerCase().includes(search.toLowerCase());
-    const matchClass = !filterClass || s.className === filterClass;
-    return matchSearch && matchClass;
+
+    if (!shouldApplyStructuredFilter) {
+      return matchSearch;
+    }
+
+    const matchClass = s.className === filterClass;
+    const matchSchool = s.school === filterSchool;
+    const matchAcademicYear = s.academicYearName === filterAcademicYear;
+    return matchSearch && matchClass && matchSchool && matchAcademicYear;
   });
 
   // ── Xóa học sinh ────────────────────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!window.confirm('Bạn có chắc muốn xóa học sinh này?')) return;
     setDeleteLoading(id);
+    setFeedback({ severity: '', message: '' });
     try {
       await api.delete(`/api/students/${id}`);
       setStudents((prev) => prev.filter((s) => s.id !== id));
+      setFeedback({ severity: 'success', message: 'Đã xóa học sinh thành công.' });
     } catch (err) {
-      alert(err.response?.data?.error || 'Xóa thất bại');
+      setFeedback({ severity: 'error', message: getApiErrorMessage(err, 'Xóa học sinh thất bại.') });
     } finally {
       setDeleteLoading(null);
     }
@@ -107,12 +127,16 @@ export default function StudentManagement() {
   const handleEditSave = async () => {
     setEditSaving(true);
     setEditError('');
+    setFeedback({ severity: '', message: '' });
     try {
       const { data } = await api.put(`/api/students/${editStudent.id}`, editForm);
       setStudents((prev) => prev.map((s) => s.id === data.id ? { ...s, ...data } : s));
       setEditStudent(null);
+      setFeedback({ severity: 'success', message: 'Đã cập nhật thông tin học sinh.' });
     } catch (err) {
-      setEditError(err.response?.data?.error || 'Cập nhật thất bại');
+      const message = getApiErrorMessage(err, 'Cập nhật thất bại');
+      setEditError(message);
+      setFeedback({ severity: 'error', message });
     } finally {
       setEditSaving(false);
     }
@@ -128,12 +152,15 @@ export default function StudentManagement() {
   const handleResetPassword = async () => {
     setResetSaving(true);
     setResetError('');
+    setFeedback({ severity: '', message: '' });
     try {
       await api.put(`/api/students/${resetStudent.id}/reset-password`, { newPassword });
       setResetStudent(null);
-      alert('Đã đặt lại mật khẩu thành công!');
+      setFeedback({ severity: 'success', message: 'Đã đặt lại mật khẩu thành công!' });
     } catch (err) {
-      setResetError(err.response?.data?.error || 'Đặt lại mật khẩu thất bại');
+      const message = getApiErrorMessage(err, 'Đặt lại mật khẩu thất bại');
+      setResetError(message);
+      setFeedback({ severity: 'error', message });
     } finally {
       setResetSaving(false);
     }
@@ -172,12 +199,34 @@ export default function StudentManagement() {
               {classes.map((cls) => <MenuItem key={cls} value={cls}>{cls}</MenuItem>)}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Lọc theo trường</InputLabel>
+            <Select value={filterSchool} onChange={(e) => setFilterSchool(e.target.value)} label="Lọc theo trường">
+              <MenuItem value=""><em>Tất cả trường</em></MenuItem>
+              {schools.map((school) => <MenuItem key={school} value={school}>{school}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Lọc theo năm học</InputLabel>
+            <Select value={filterAcademicYear} onChange={(e) => setFilterAcademicYear(e.target.value)} label="Lọc theo năm học">
+              <MenuItem value=""><em>Tất cả năm học</em></MenuItem>
+              {academicYears.map((year) => <MenuItem key={year} value={year}>{year}</MenuItem>)}
+            </Select>
+          </FormControl>
           <Typography variant="body2" color="text.secondary">
             Hiển thị {filtered.length}/{students.length}
+          </Typography>
+          <Typography variant="caption" color={shouldApplyStructuredFilter ? 'success.main' : 'text.secondary'}>
+            {shouldApplyStructuredFilter ? 'Đang lọc theo đủ lớp, trường, năm học' : 'Chọn đủ lớp + trường + năm học để áp dụng lọc'}
           </Typography>
         </Paper>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {feedback.message && (
+          <Alert severity={feedback.severity || 'info'} sx={{ mb: 2 }} onClose={() => setFeedback({ severity: '', message: '' })}>
+            {feedback.message}
+          </Alert>
+        )}
 
         {loading ? (
           <Box sx={{ textAlign: 'center', mt: 6 }}><CircularProgress /></Box>
