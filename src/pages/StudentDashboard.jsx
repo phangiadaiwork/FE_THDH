@@ -230,249 +230,247 @@ export default function StudentDashboard() {
           </Box>
         ) : (
           <>
-            <Paper sx={{ p: 2.5, borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce', mb: 3 }}>
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
-                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
-                  <InputLabel>Khối lớp</InputLabel>
-                  <Select
-                    value={selectedGrade}
-                    label="Khối lớp"
-                    onChange={(e) => setSelectedGrade(e.target.value)}
-                  >
-                    {gradeStats.map((grade) => (
-                      <MenuItem key={grade.gradeLevel} value={grade.gradeLevel}>
-                        Lớp {grade.gradeLevel} ({grade.lessonCount} bài)
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 260 } }}>
-                  <InputLabel>Danh mục chương</InputLabel>
-                  <Select
-                    value={selectedChapterKey}
-                    label="Danh mục chương"
-                    onChange={(e) => setSelectedChapterKey(e.target.value)}
-                  >
-                    {chapters.length === 0 ? (
-                      <MenuItem value="" disabled>
-                        Chưa có chương nào
-                      </MenuItem>
-                    ) : (
-                      chapters.map((chapter) => (
-                        <MenuItem key={chapter.key} value={chapter.key}>
-                          {chapter.chapterTitle} ({chapter.lessons.length} bài)
+            <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce', mb: 3 }}>
+              <Grid container spacing={1.5}>
+                <Grid item xs={6} sm={6} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Khối lớp</InputLabel>
+                    <Select
+                      value={selectedGrade}
+                      label="Khối lớp"
+                      onChange={(e) => setSelectedGrade(e.target.value)}
+                    >
+                      {gradeStats.map((grade) => (
+                        <MenuItem key={grade.gradeLevel} value={grade.gradeLevel}>
+                          Lớp {grade.gradeLevel} ({grade.lessonCount} bài)
                         </MenuItem>
-                      ))
-                    )}
-                  </Select>
-                </FormControl>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
-                  <InputLabel>Trạng thái</InputLabel>
-                  <Select value={statusFilter} label="Trạng thái" onChange={(e) => setStatusFilter(e.target.value)}>
-                    <MenuItem value="ALL">Tất cả</MenuItem>
-                    <MenuItem value="NOT_STARTED">Chưa làm</MenuItem>
-                    <MenuItem value="IN_PROGRESS">Đang làm</MenuItem>
-                    <MenuItem value="COMPLETED">Đã hoàn thành</MenuItem>
-                  </Select>
-                </FormControl>
+                <Grid item xs={6} sm={6} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Danh mục chương</InputLabel>
+                    <Select
+                      value={selectedChapterKey}
+                      label="Danh mục chương"
+                      onChange={(e) => setSelectedChapterKey(e.target.value)}
+                    >
+                      {chapters.length === 0 ? (
+                        <MenuItem value="" disabled>
+                          Chưa có chương nào
+                        </MenuItem>
+                      ) : (
+                        chapters.map((chapter) => (
+                          <MenuItem key={chapter.key} value={chapter.key}>
+                            {chapter.chapterTitle} ({chapter.lessons.length} bài)
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
-                  <InputLabel>Sắp xếp</InputLabel>
-                  <Select value={sortBy} label="Sắp xếp" onChange={(e) => setSortBy(e.target.value)}>
-                    <MenuItem value="default">Theo số bài</MenuItem>
-                    <MenuItem value="status">Ưu tiên trạng thái</MenuItem>
-                    <MenuItem value="score">Điểm cao trước</MenuItem>
-                  </Select>
-                </FormControl>
-              </Stack>
+                <Grid item xs={6} sm={6} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Trạng thái</InputLabel>
+                    <Select value={statusFilter} label="Trạng thái" onChange={(e) => setStatusFilter(e.target.value)}>
+                      <MenuItem value="ALL">Tất cả</MenuItem>
+                      <MenuItem value="NOT_STARTED">Chưa làm</MenuItem>
+                      <MenuItem value="IN_PROGRESS">Đang làm</MenuItem>
+                      <MenuItem value="COMPLETED">Đã hoàn thành</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={6} sm={6} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Sắp xếp</InputLabel>
+                    <Select value={sortBy} label="Sắp xếp" onChange={(e) => setSortBy(e.target.value)}>
+                      <MenuItem value="default">Theo số bài</MenuItem>
+                      <MenuItem value="status">Ưu tiên trạng thái</MenuItem>
+                      <MenuItem value="score">Điểm cao trước</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
             </Paper>
 
-            <Grid container spacing={2.2}>
-              <Grid item xs={12}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {selectedGrade ? `Đang xem Lớp ${selectedGrade}` : 'Chưa chọn khối lớp'}
-                  {chapters.find((chapter) => chapter.key === selectedChapterKey)
-                    ? ` • ${chapters.find((chapter) => chapter.key === selectedChapterKey)?.chapterTitle}`
-                    : ''}
-                </Typography>
-              </Grid>
+            <Grid container spacing={3}>
+              <Grid item xs={12} lg={4}>
+                <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { lg: 'calc(100vh - 380px)' }, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 1, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
+                    Danh sách bài học
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
+                    {selectedGrade ? `Lớp ${selectedGrade}` : 'Chưa chọn khối lớp'}
+                    {chapters.find((chapter) => chapter.key === selectedChapterKey)
+                      ? ` • ${chapters.find((chapter) => chapter.key === selectedChapterKey)?.chapterTitle}`
+                      : ''}
+                  </Typography>
 
-                  {visibleLessons.map((lesson) => {
-                    const status = lesson.attemptSummary?.status || 'NOT_STARTED';
-                    const meta = STATUS_META[status];
+                  <Stack spacing={1} sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
+                    {visibleLessons.map((lesson) => {
+                      const status = lesson.attemptSummary?.status || 'NOT_STARTED';
+                      const meta = STATUS_META[status];
 
-                    return (
-                      <Grid item xs={12} key={lesson.id}>
+                      return (
                         <Card
+                          key={lesson.id}
                           onClick={() => setSelectedLessonId(lesson.id)}
                           sx={{
-                            borderRadius: 4,
+                            borderRadius: 3,
                             border: selectedLessonId === lesson.id ? '2px solid #8c5c22' : '1px solid #efe2ce',
                             background: selectedLessonId === lesson.id
                               ? 'linear-gradient(135deg, #fffaf2 0%, #ffffff 100%)'
                               : '#fff',
                             cursor: 'pointer',
+                            boxShadow: 'none',
                           }}
                         >
-                          <CardContent>
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                              <Box sx={{ flex: 1 }}>
-                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                                  <Chip label={lesson.chapterTitle} size="small" sx={{ bgcolor: '#f5ead8' }} />
-                                  <Chip label={meta.label} size="small" color={meta.color} />
-                                  {lesson.attemptSummary?.avgScore !== null && (
-                                    <Chip
-                                      label={`TB ${lesson.attemptSummary.avgScore}`}
-                                      size="small"
-                                      color="success"
-                                      variant="outlined"
-                                    />
-                                  )}
-                                </Stack>
+                          <CardContent sx={{ '&:last-child': { pb: 1.5 }, p: 1.5 }}>
+                            <Stack spacing={0.8}>
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                <Chip label={meta.label} size="small" color={meta.color} />
+                                {lesson.attemptSummary?.avgScore !== null && (
+                                  <Chip
+                                    label={`TB ${lesson.attemptSummary.avgScore}`}
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                  />
+                                )}
+                              </Stack>
 
-                                <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 0.5 }}>
+                              <Box>
+                                <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
                                   {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
                                   {lesson.lessonTitle}
                                 </Typography>
-                                <Typography color="text.secondary" sx={{ mb: 1.5 }}>
-                                  {lesson.theoryContent?.slice(0, 160) || 'Chưa có nội dung lý thuyết.'}
-                                  {lesson.theoryContent?.length > 160 ? '...' : ''}
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block', fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
+                                  {lesson.theoryContent?.slice(0, 100) || 'Chưa có nội dung lý thuyết.'}
+                                  {lesson.theoryContent?.length > 100 ? '...' : ''}
                                 </Typography>
-
-                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                  <Chip icon={<MenuBookIcon />} label="Lý thuyết" size="small" variant="outlined" />
-                                  <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount} node bài tập`} size="small" variant="outlined" />
-                                </Stack>
                               </Box>
 
-                              <Stack spacing={1} justifyContent="center" sx={{ minWidth: { md: 170 } }}>
-                                <Button
-                                  variant="contained"
-                                  startIcon={status === 'IN_PROGRESS' ? <AutorenewIcon /> : status === 'COMPLETED' ? <RestartAltIcon /> : <PlayArrowIcon />}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    navigate(`/student/exam/${lesson.id}`);
-                                  }}
-                                  sx={{ textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' } }}
-                                >
-                                  {getActionLabel(status, lesson.attemptSummary?.attemptCount)}
-                                </Button>
-
-                                {lesson.attemptSummary?.canReview && (
-                                  <Button
-                                    variant="outlined"
-                                    startIcon={<VisibilityIcon />}
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      navigate(`/student/exam/${lesson.id}?mode=review`);
-                                    }}
-                                    sx={{ textTransform: 'none' }}
-                                  >
-                                    Xem bài tập
-                                  </Button>
-                                )}
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                <Chip icon={<MenuBookIcon />} label="Lý thuyết" size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+                                <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount}N`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
                               </Stack>
                             </Stack>
                           </CardContent>
                         </Card>
-                      </Grid>
-                    );
-                  })}
+                      );
+                    })}
 
-                  {visibleLessons.length === 0 && (
-                    <Grid item xs={12}>
-                      <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 4 }}>
-                        <Typography color="text.secondary">
+                    {visibleLessons.length === 0 && (
+                      <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3, bgcolor: '#fffdf8' }}>
+                        <Typography color="text.secondary" variant="body2">
                           Không có bài nào khớp bộ lọc hiện tại.
                         </Typography>
                       </Paper>
-                    </Grid>
-                  )}
-            </Grid>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid>
 
-            {selectedLesson && (
-              <Paper
-                sx={{
-                  mt: 4,
-                  p: { xs: 2, md: 3.5 },
-                  borderRadius: 5,
-                  border: '1px solid #efe2ce',
-                  background: 'linear-gradient(180deg, #fffdf9 0%, #fff6ea 100%)',
-                }}
-              >
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                      <AutoStoriesIcon sx={{ color: '#8c5c22' }} />
-                      <Typography variant="h5" fontWeight={800} sx={{ color: '#5d3c15' }}>
-                        {selectedLesson.lessonNumber ? `Bài ${selectedLesson.lessonNumber}: ` : ''}
-                        {selectedLesson.lessonTitle}
-                      </Typography>
-                    </Stack>
-
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#7a4f1d' }}>
-                      Lý thuyết
-                    </Typography>
-                    <Typography sx={{ whiteSpace: 'pre-line', lineHeight: 1.8 }}>
-                      {selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}
-                    </Typography>
-
-                    <Divider sx={{ my: 2.5 }} />
-
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#7a4f1d' }}>
-                      Bài tập
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mb: 2 }}>
-                      Nhấn vào nút bên dưới để mở cây sơ đồ tư duy và luyện tập theo đúng thứ tự DFS.
-                    </Typography>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2}>
-                      <Button
-                        variant="contained"
-                        startIcon={<AccountTreeIcon />}
-                        onClick={() => navigate(`/student/exam/${selectedLesson.id}`)}
-                        sx={{ textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' } }}
-                      >
-                        {getActionLabel(selectedLesson.attemptSummary?.status || 'NOT_STARTED', selectedLesson.attemptSummary?.attemptCount)}
-                      </Button>
-
-                      {selectedLesson.attemptSummary?.canReview && (
-                        <Button
-                          variant="outlined"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => navigate(`/student/exam/${selectedLesson.id}?mode=review`)}
-                          sx={{ textTransform: 'none' }}
-                        >
-                          Xem bài tập đã làm
-                        </Button>
-                      )}
-                    </Stack>
-                  </Box>
-
+              <Grid item xs={12} lg={8}>
+                {selectedLesson ? (
                   <Paper
-                    elevation={0}
                     sx={{
-                      width: { xs: '100%', md: 280 },
-                      p: 2.5,
-                      borderRadius: 4,
-                      bgcolor: '#fff',
+                      p: { xs: 1.5, sm: 2, md: 3 },
+                      borderRadius: 5,
                       border: '1px solid #efe2ce',
+                      background: 'linear-gradient(180deg, #fffdf9 0%, #fff6ea 100%)',
+                      position: { lg: 'sticky' },
+                      top: { lg: 24 },
+                      height: { lg: 'calc(100vh - 380px)' },
+                      overflow: { lg: 'auto' },
                     }}
                   >
-                    <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#5d3c15', mb: 1.5 }}>
-                      Tiến độ của bạn
-                    </Typography>
-                    <Stack spacing={1.2}>
-                      <Chip label={STATUS_META[selectedLesson.attemptSummary?.status || 'NOT_STARTED'].label} color={STATUS_META[selectedLesson.attemptSummary?.status || 'NOT_STARTED'].color} />
-                      <Typography>Điểm cao nhất: {selectedLesson.attemptSummary?.bestScore ?? '—'}</Typography>
-                      <Typography>Điểm trung bình: {selectedLesson.attemptSummary?.avgScore ?? '—'}</Typography>
-                      <Typography>Số lần hoàn thành: {selectedLesson.attemptSummary?.attemptCount ?? 0}</Typography>
+                    <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, lg: 3 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                          <AutoStoriesIcon sx={{ color: '#8c5c22', mt: 0.5, flexShrink: 0, fontSize: { xs: '1.5rem', md: '1.75rem' } }} />
+                          <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '1rem', md: '1.35rem' }, lineHeight: 1.3 }}>
+                            {selectedLesson.lessonNumber ? `Bài ${selectedLesson.lessonNumber}: ` : ''}
+                            {selectedLesson.lessonTitle}
+                          </Typography>
+                        </Stack>
+
+                        <Typography variant="body2" fontWeight={700} sx={{ mb: 0.8, color: '#7a4f1d', fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                          Lý thuyết
+                        </Typography>
+                        <Typography sx={{ whiteSpace: 'pre-line', lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5 }}>
+                          {selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}
+                        </Typography>
+
+                        <Divider sx={{ my: 1.5 }} />
+
+                        <Typography variant="body2" fontWeight={700} sx={{ mb: 0.8, color: '#7a4f1d', fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                          Bài tập
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: { xs: '0.8rem', md: '0.9rem' } }}>
+                          Nhấn vào nút bên dưới để mở cây sơ đồ tư duy và luyện tập theo đúng thứ tự DFS.
+                        </Typography>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
+                          <Button
+                            variant="contained"
+                            startIcon={<AccountTreeIcon />}
+                            onClick={() => navigate(`/student/exam/${selectedLesson.id}`)}
+                            sx={{ textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' }, fontSize: { xs: '0.8rem', md: '0.9rem' } }}
+                            size="small"
+                          >
+                            {getActionLabel(selectedLesson.attemptSummary?.status || 'NOT_STARTED', selectedLesson.attemptSummary?.attemptCount)}
+                          </Button>
+
+                          {selectedLesson.attemptSummary?.canReview && (
+                            <Button
+                              variant="outlined"
+                              startIcon={<VisibilityIcon />}
+                              onClick={() => navigate(`/student/exam/${selectedLesson.id}?mode=review`)}
+                              sx={{ textTransform: 'none', fontSize: { xs: '0.8rem', md: '0.9rem' } }}
+                              size="small"
+                            >
+                              Xem bài tập đã làm
+                            </Button>
+                          )}
+                        </Stack>
+                      </Box>
+
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          width: { xs: '100%', lg: 240 },
+                          p: { xs: 1.5, md: 2 },
+                          borderRadius: 4,
+                          bgcolor: '#fff',
+                          border: '1px solid #efe2ce',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', mb: 1, fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
+                          Tiến độ của bạn
+                        </Typography>
+                        <Stack spacing={0.8}>
+                          <Chip label={STATUS_META[selectedLesson.attemptSummary?.status || 'NOT_STARTED'].label} color={STATUS_META[selectedLesson.attemptSummary?.status || 'NOT_STARTED'].color} size="small" />
+                          <Typography sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}>Điểm cao nhất: <strong>{selectedLesson.attemptSummary?.bestScore ?? '—'}</strong></Typography>
+                          <Typography sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}>Điểm trung bình: <strong>{selectedLesson.attemptSummary?.avgScore ?? '—'}</strong></Typography>
+                          <Typography sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' } }}>Số lần hoàn thành: <strong>{selectedLesson.attemptSummary?.attemptCount ?? 0}</strong></Typography>
+                        </Stack>
+                      </Paper>
                     </Stack>
                   </Paper>
-                </Stack>
-              </Paper>
-            )}
+                ) : (
+                  <Paper sx={{ p: { xs: 2, md: 4 }, borderRadius: 5, textAlign: 'center', border: '1px solid #efe2ce', minHeight: { xs: 200, lg: 'calc(100vh - 380px)' }, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography color="text.secondary" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                      Chọn một bài bên trái để xem nội dung chi tiết.
+                    </Typography>
+                  </Paper>
+                )}
+              </Grid>
+            </Grid>
           </>
         )}
       </Container>
