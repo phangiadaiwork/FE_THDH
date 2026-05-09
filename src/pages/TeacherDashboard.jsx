@@ -39,6 +39,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import EditIcon from '@mui/icons-material/Edit';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
@@ -604,11 +605,18 @@ export default function TeacherDashboard() {
                     <Button size="small" onClick={() => openVisibilityDialog(lesson)}>
                       Phạm vi hiển thị
                     </Button>
-                    <Tooltip title="Xóa bài học">
-                      <IconButton color="error" onClick={() => handleDelete(lesson.id)} disabled={deleteLoading === lesson.id}>
-                        {deleteLoading === lesson.id ? <CircularProgress size={18} /> : <DeleteIcon />}
-                      </IconButton>
-                    </Tooltip>
+                    <Box>
+                      <Tooltip title="Sửa bài học">
+                        <IconButton color="primary" onClick={() => navigate(`/teacher/edit-exam/${lesson.id}`)}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Xóa bài học">
+                        <IconButton color="error" onClick={() => handleDelete(lesson.id)} disabled={deleteLoading === lesson.id}>
+                          {deleteLoading === lesson.id ? <CircularProgress size={18} /> : <DeleteIcon />}
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </CardActions>
                 </Card>
               </Grid>

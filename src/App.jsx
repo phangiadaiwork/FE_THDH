@@ -61,6 +61,14 @@ function App() {
             }
           />
           <Route
+            path="/teacher/edit-exam/:id"
+            element={
+              <PrivateRoute role="TEACHER">
+                <CreateExam />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/teacher/stats"
             element={
               <PrivateRoute role="TEACHER">

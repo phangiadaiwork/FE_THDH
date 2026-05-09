@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import ReactFlow, {
   Background,
   Controls,
@@ -83,6 +83,8 @@ const EMPTY_FORM = {
 
 export default function CreateExam() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [loadingData, setLoadingData] = useState(!!id);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -92,16 +94,100 @@ export default function CreateExam() {
   const [importing, setImporting] = useState(false);
 
   const [gradeLevel, setGradeLevel] = useState('12');
-  const [chapterTitle, setChapterTitle] = useState('Chương VI');
-  const [chapterCode, setChapterCode] = useState('chuong-vi');
-  const [chapterDisplayOrder, setChapterDisplayOrder] = useState(6);
-  const [lessonNumber, setLessonNumber] = useState(18);
+  const [chapterTitle, setChapterTitle] = useState('Động học');
+  const [chapterDisplayOrder, setChapterDisplayOrder] = useState(1);
+  const [lessonNumber, setLessonNumber] = useState(1);
   const [lessonTitle, setLessonTitle] = useState('');
   const [exerciseTitle, setExerciseTitle] = useState('Bài tập');
   const [theoryContent, setTheoryContent] = useState('');
 
   const fileInputRef = useRef(null);
   const idCounter = useRef(1);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchExam = async () => {
+      try {
+        const { data } = await api.get(`/api/exams/${id}`);
+        setGradeLevel(data.gradeLevel || '12');
+
+        let rawChapterTitle = data.chapterTitle || '';
+        const chapMatch = rawChapterTitle.match(/^Chương\s+\d+:\s*(.*)/i);
+        if (chapMatch) rawChapterTitle = chapMatch[1];
+        setChapterTitle(rawChapterTitle);
+        setChapterDisplayOrder(data.chapterDisplayOrder || 1);
+
+        let rawLessonTitle = data.lessonTitle || '';
+        const lessMatch = rawLessonTitle.match(/^Bài\s+\d+:\s*(.*)/i);
+        if (lessMatch) rawLessonTitle = lessMatch[1];
+        setLessonTitle(rawLessonTitle);
+        setLessonNumber(data.lessonNumber || 1);
+
+        setExerciseTitle(data.exerciseTitle || 'Bài tập');
+        setTheoryContent(data.theoryContent || '');
+
+        if (data.nodes && data.nodes.length > 0) {
+          const fetchedNodes = data.nodes;
+          const edges = [];
+          
+          const childrenMap = {};
+          fetchedNodes.forEach((n) => {
+            if (n.parentId) {
+              if (!childrenMap[n.parentId]) childrenMap[n.parentId] = [];
+              childrenMap[n.parentId].push(n);
+              edges.push({
+                id: `e${n.parentId}-${n.id}`,
+                source: String(n.parentId),
+                target: String(n.id),
+                markerEnd: { type: MarkerType.ArrowClosed, color: '#d4a256' },
+                style: { stroke: '#d4a256', strokeWidth: 2 },
+              });
+            }
+          });
+
+          const roots = fetchedNodes.filter((n) => !n.parentId);
+          const layoutedNodes = [];
+          
+          const traverse = (node, depth, xOffset) => {
+            layoutedNodes.push({
+              id: String(node.id),
+              type: 'editorNode',
+              position: { x: xOffset, y: depth * 150 + 60 },
+              data: {
+                label: node.label,
+                question: node.question,
+                options: node.options || ['', '', '', ''],
+                correctAnswer: node.correctAnswer,
+                hint: node.hint,
+                points: node.points,
+                isMultiChoice: Array.isArray(node.options) && node.options.length > 0,
+              },
+            });
+
+            const children = childrenMap[node.id] || [];
+            children.sort((a, b) => a.order - b.order);
+            const startX = xOffset - Math.max(0, children.length - 1) * 110;
+            children.forEach((child, index) => {
+              traverse(child, depth + 1, startX + index * 220);
+            });
+          };
+
+          roots.forEach((root, idx) => traverse(root, 0, 340 + idx * 300));
+          
+          setRfNodes(layoutedNodes);
+          setRfEdges(edges);
+          
+          const maxId = Math.max(...fetchedNodes.map(n => n.id));
+          idCounter.current = maxId + 1;
+        }
+      } catch (err) {
+        setSaveError('Không thể tải dữ liệu bài học.');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    fetchExam();
+  }, [id, setRfNodes, setRfEdges]);
 
   const selectedNode = rfNodes.find((node) => node.id === selectedId);
 
@@ -241,18 +327,23 @@ export default function CreateExam() {
 
     setSaving(true);
     try {
-      await api.post('/api/exams', {
+      const payloadObj = {
         gradeLevel,
-        chapterTitle,
-        chapterCode,
-        chapterDisplayOrder: Number(chapterDisplayOrder) || 0,
-        lessonNumber: Number(lessonNumber) || null,
-        lessonTitle: lessonTitle.trim(),
+        chapterTitle: `Chương ${Number(chapterDisplayOrder) || 1}: ${chapterTitle.trim()}`,
+        chapterDisplayOrder: Number(chapterDisplayOrder) || 1,
+        lessonNumber: Number(lessonNumber) || 1,
+        lessonTitle: `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`,
         exerciseTitle: exerciseTitle.trim() || 'Bài tập',
         theoryContent,
-        title: lessonTitle.trim(),
+        title: `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`,
         nodes,
-      });
+      };
+
+      if (id) {
+        await api.put(`/api/exams/${id}`, payloadObj);
+      } else {
+        await api.post('/api/exams', payloadObj);
+      }
       navigate('/teacher');
     } catch (err) {
       setSaveError(err.response?.data?.error || 'Không thể lưu bài học.');
@@ -287,14 +378,22 @@ export default function CreateExam() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('gradeLevel', gradeLevel);
-      formData.append('chapterTitle', chapterTitle);
-      formData.append('chapterCode', chapterCode);
-      formData.append('chapterDisplayOrder', String(chapterDisplayOrder));
-      formData.append('lessonNumber', String(lessonNumber));
-      formData.append('lessonTitle', lessonTitle);
+      formData.append('chapterTitle', `Chương ${Number(chapterDisplayOrder) || 1}: ${chapterTitle.trim()}`);
+      formData.append('chapterDisplayOrder', String(Number(chapterDisplayOrder) || 1));
+      formData.append('lessonNumber', String(Number(lessonNumber) || 1));
+      formData.append('lessonTitle', `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`);
       formData.append('exerciseTitle', exerciseTitle);
       formData.append('theoryContent', theoryContent);
-      formData.append('title', lessonTitle);
+      formData.append('title', `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`);
+      
+      if (id) {
+        // Import currently only supports POST. If we need PUT for import, we can add it, but for now fallback to create or ignore.
+        // Actually, importing when editing is complex, so let's just use POST to create a new one.
+        setSaveError('Import Excel chỉ áp dụng khi tạo bài mới.');
+        setImporting(false);
+        return;
+      }
+
       await api.post('/api/exams/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -319,7 +418,7 @@ export default function CreateExam() {
             </IconButton>
             <AccountTreeIcon sx={{ color: '#8c5c22' }} />
             <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15' }}>
-              Tạo bài học dạng sơ đồ tư duy
+              {id ? 'Sửa bài học' : 'Tạo bài học dạng sơ đồ tư duy'}
             </Typography>
           </Stack>
 
@@ -373,21 +472,13 @@ export default function CreateExam() {
                     <TextField
                       fullWidth
                       size="small"
-                      label="Tên chương"
+                      label="Tiêu đề chương"
+                      placeholder="VD: Động học chất điểm"
                       value={chapterTitle}
                       onChange={(e) => setChapterTitle(e.target.value)}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Mã chương"
-                      value={chapterCode}
-                      onChange={(e) => setChapterCode(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <TextField
                       fullWidth
                       size="small"
@@ -407,11 +498,12 @@ export default function CreateExam() {
                       onChange={(e) => setLessonNumber(e.target.value)}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={8}>
+                  <Grid item xs={12} sm={4}>
                     <TextField
                       fullWidth
                       size="small"
-                      label="Tên bài"
+                      label="Tiêu đề bài"
+                      placeholder="VD: Chuyển động thẳng đều"
                       value={lessonTitle}
                       onChange={(e) => setLessonTitle(e.target.value)}
                     />
