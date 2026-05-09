@@ -78,6 +78,7 @@ export default function StudentDashboard() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('default');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileViewDetail, setMobileViewDetail] = useState(false);
 
   const user = (() => {
     try {
@@ -316,8 +317,8 @@ export default function StudentDashboard() {
               </Grid>
             </Paper>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} lg={4}>
+            <Grid container spacing={3} sx={{ display: 'block' }}>
+              <Grid item xs={12} lg={4} sx={{ display: { xs: mobileViewDetail ? 'none' : 'block', lg: 'block' }, mb: { xs: 0, lg: 'auto' } }}>
                 <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { lg: 'calc(100vh - 380px)' }, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 0.5, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
                     Danh sách bài học
@@ -355,7 +356,10 @@ export default function StudentDashboard() {
                       return (
                         <Card
                           key={lesson.id}
-                          onClick={() => setSelectedLessonId(lesson.id)}
+                          onClick={() => {
+                            setSelectedLessonId(lesson.id);
+                            if (window.innerWidth < 960) setMobileViewDetail(true);
+                          }}
                           sx={{
                             borderRadius: 3,
                             border: selectedLessonId === lesson.id ? '2px solid #8c5c22' : '1px solid #efe2ce',
@@ -391,9 +395,39 @@ export default function StudentDashboard() {
                                 </Typography>
                               </Box>
 
-                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
                                 <Chip icon={<MenuBookIcon />} label="Lý thuyết" size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
                                 <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount}N`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+                              </Stack>
+
+                              <Stack direction="row" spacing={0.8} sx={{ display: { xs: 'flex', lg: 'none' } }}>
+                                <Button
+                                  variant="contained"
+                                  startIcon={status === 'IN_PROGRESS' ? <AutorenewIcon /> : status === 'COMPLETED' ? <RestartAltIcon /> : <PlayArrowIcon />}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/student/exam/${lesson.id}`);
+                                  }}
+                                  sx={{ flex: 1, textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' }, fontSize: '0.75rem' }}
+                                  size="small"
+                                >
+                                  {getActionLabel(status, lesson.attemptSummary?.attemptCount)}
+                                </Button>
+
+                                {lesson.attemptSummary?.canReview && (
+                                  <Button
+                                    variant="outlined"
+                                    startIcon={<VisibilityIcon />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/student/exam/${lesson.id}?mode=review`);
+                                    }}
+                                    sx={{ flex: 1, textTransform: 'none', fontSize: '0.75rem' }}
+                                    size="small"
+                                  >
+                                    Xem
+                                  </Button>
+                                )}
                               </Stack>
                             </Stack>
                           </CardContent>
@@ -412,7 +446,7 @@ export default function StudentDashboard() {
                 </Paper>
               </Grid>
 
-              <Grid item xs={12} lg={8}>
+              <Grid item xs={12} lg={8} sx={{ display: { xs: mobileViewDetail ? 'block' : 'none', lg: 'block' } }}>
                 {selectedLesson ? (
                   <Paper
                     sx={{
@@ -426,6 +460,14 @@ export default function StudentDashboard() {
                       overflow: { lg: 'auto' },
                     }}
                   >
+                    {mobileViewDetail && (
+                      <Button
+                        onClick={() => setMobileViewDetail(false)}
+                        sx={{ mb: 1.5, textTransform: 'none', color: '#8c5c22', fontSize: '0.9rem' }}
+                      >
+                        ← Quay lại
+                      </Button>
+                    )}
                     <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, lg: 3 }}>
                       <Box sx={{ flex: 1 }}>
                         <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1.5 }}>
@@ -451,7 +493,7 @@ export default function StudentDashboard() {
                         <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: { xs: '0.8rem', md: '0.9rem' } }}>
                           Nhấn vào nút bên dưới để mở cây sơ đồ tư duy và luyện tập theo đúng thứ tự DFS.
                         </Typography>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1 }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1, display: { xs: 'none', lg: 'flex' } }}>
                           <Button
                             variant="contained"
                             startIcon={<AccountTreeIcon />}
