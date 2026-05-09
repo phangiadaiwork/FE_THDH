@@ -4,6 +4,8 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardContent,
   Chip,
   CircularProgress,
   Container,
@@ -13,288 +15,405 @@ import {
   MenuItem,
   Paper,
   Select,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
-  Tab,
-  Typography,
+  IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import PeopleIcon from '@mui/icons-material/People';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import WarningIcon from '@mui/icons-material/Warning';
+import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
-const STATUS_LABEL = {
-  NOT_STARTED: 'Chưa làm',
-  IN_PROGRESS: 'Đang làm',
-  COMPLETED: 'Hoàn thành',
-};
-
-function AverageChip({ value }) {
-  if (value === null || value === undefined) return <Typography color="text.disabled">—</Typography>;
-  const color = value >= 8 ? 'success' : value >= 5 ? 'warning' : 'error';
-  return <Chip size="small" color={color} label={value} />;
-}
-
 export default function Stats() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
-  const [rows, setRows] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [lessons, setLessons] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // Filter Data
+  const [filtersLoading, setFiltersLoading] = useState(true);
+  const [filterData, setFilterData] = useState({ classes: [], lessons: [] });
   const [error, setError] = useState('');
-  const [selectedClass, setSelectedClass] = useState('ALL');
-  const [selectedLessonId, setSelectedLessonId] = useState('ALL');
+
+  // Selected Filters (Step 1)
+  const [selectedSchool, setSelectedSchool] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('');
+
+  // Dashboard State (Step 2)
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [dashboardVisible, setDashboardVisible] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  
+  // Tabs & Tab Filters
+  const [tab, setTab] = useState(0);
+  const [tabClassFilter, setTabClassFilter] = useState('ALL');
+  const [tabLessonFilter, setTabLessonFilter] = useState('');
+
+  // Node Stats State
+  const [nodeStatsLoading, setNodeStatsLoading] = useState(false);
+  const [nodeStats, setNodeStats] = useState([]);
 
   useEffect(() => {
-    const load = async () => {
+    const loadFilters = async () => {
       try {
-        const { data } = await api.get('/api/attempts/stats');
-        setRows(data.rows || []);
-        setClasses(data.classes || []);
-        setLessons(data.lessons || []);
+        const { data } = await api.get('/api/attempts/filters');
+        setFilterData(data);
+        if (data.lessons && data.lessons.length > 0) {
+          setTabLessonFilter(data.lessons[0].id);
+        }
       } catch (err) {
         console.error(err);
-        setError('Không thể tải thống kê.');
+        setError('Không thể tải bộ lọc.');
       } finally {
-        setLoading(false);
+        setFiltersLoading(false);
       }
     };
-
-    load();
+    loadFilters();
   }, []);
 
-  const filteredRows = useMemo(
-    () => rows.filter((row) => selectedClass === 'ALL' || row.classId === selectedClass),
-    [rows, selectedClass]
-  );
+  // Compute available filter options dynamically
+  const availableSchools = useMemo(() => [...new Set(filterData.classes.map(c => c.school))], [filterData.classes]);
+  const availableYears = useMemo(() => 
+    [...new Set(filterData.classes.filter(c => c.school === selectedSchool).map(c => c.academicYearName))], 
+  [filterData.classes, selectedSchool]);
+  const availableGrades = useMemo(() => 
+    [...new Set(filterData.classes.filter(c => c.school === selectedSchool && c.academicYearName === selectedYear).map(c => c.gradeLevel))], 
+  [filterData.classes, selectedSchool, selectedYear]);
+  const availableClassesInGrade = useMemo(() => 
+    filterData.classes.filter(c => c.school === selectedSchool && c.academicYearName === selectedYear && c.gradeLevel === selectedGrade),
+  [filterData.classes, selectedSchool, selectedYear, selectedGrade]);
 
-  const lessonAggregates = useMemo(
-    () =>
-      lessons.map((lesson) => {
-        const stats = filteredRows.map((row) => row.lessonStats.find((item) => item.examId === lesson.id)).filter(Boolean);
-        const completed = stats.filter((item) => item.status === 'COMPLETED');
-        const inProgress = stats.filter((item) => item.status === 'IN_PROGRESS');
-        const avgScore = completed.length > 0
-          ? parseFloat((completed.reduce((sum, item) => sum + (item.avgScore || 0), 0) / completed.length).toFixed(2))
-          : null;
+  const handleFetchStats = async () => {
+    if (!selectedSchool || !selectedYear || !selectedGrade) return;
+    setStatsLoading(true);
+    setError('');
+    try {
+      const { data } = await api.get('/api/attempts/stats', {
+        params: { school: selectedSchool, academicYearName: selectedYear, gradeLevel: selectedGrade }
+      });
+      setRows(data.rows || []);
+      setLessons(data.lessons || []);
+      setDashboardVisible(true);
+      setTabClassFilter('ALL');
+    } catch (err) {
+      console.error(err);
+      setError('Không thể tải dữ liệu thống kê.');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
-        return {
-          id: lesson.id,
-          label: lesson.lessonTitle,
-          avgScore,
-          completedCount: completed.length,
-          inProgressCount: inProgress.length,
-        };
-      }),
-    [filteredRows, lessons]
-  );
+  // Node stats fetcher
+  useEffect(() => {
+    if (tab === 2 && tabLessonFilter) {
+      const fetchNodeStats = async () => {
+        setNodeStatsLoading(true);
+        try {
+          const params = { examId: tabLessonFilter };
+          if (tabClassFilter !== 'ALL') params.classId = tabClassFilter;
+          const { data } = await api.get('/api/attempts/node-stats', { params });
+          setNodeStats(data.nodeStats || []);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setNodeStatsLoading(false);
+        }
+      };
+      fetchNodeStats();
+    }
+  }, [tab, tabLessonFilter, tabClassFilter]);
 
-  const classChartData = useMemo(
-    () =>
-      classes.map((studentClass) => {
-        const classRows = rows.filter(
-          (row) =>
-            row.className === studentClass.name &&
-            row.academicYearName === studentClass.academicYearName
-        );
-        const values = classRows.flatMap((row) =>
-          row.lessonStats.map((item) => item.avgScore).filter((value) => value !== null && value !== undefined)
-        );
-        return {
-          name: `${studentClass.name} (${studentClass.academicYearName})`,
-          avgScore: values.length > 0
-            ? parseFloat((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2))
-            : 0,
-        };
-      }),
-    [classes, rows]
-  );
+  // Tab 1: Class Comparison Data
+  const classComparisonData = useMemo(() => {
+    if (!dashboardVisible) return [];
+    return availableClassesInGrade.map(cls => {
+      const classRows = rows.filter(r => r.classId === cls.id);
+      if (classRows.length === 0) return { className: cls.name, avgScore: 0 };
+      
+      let totalScore = 0;
+      let attemptCount = 0;
+      classRows.forEach(student => {
+        student.lessonStats.forEach(ls => {
+          if (ls.status === 'COMPLETED' && (!tabLessonFilter || tabLessonFilter === 'ALL' || ls.examId === tabLessonFilter)) {
+            totalScore += ls.avgScore;
+            attemptCount++;
+          }
+        });
+      });
+      return {
+        className: cls.name,
+        avgScore: attemptCount > 0 ? parseFloat((totalScore / attemptCount).toFixed(2)) : 0
+      };
+    });
+  }, [dashboardVisible, availableClassesInGrade, rows, tabLessonFilter]);
 
-  const nodeChartColors = ['#8c5c22', '#b68134', '#d8a657', '#e3bc7a'];
+  // Tab 2: Weak Students Data
+  const weakStudents = useMemo(() => {
+    if (!dashboardVisible) return [];
+    const filteredRows = tabClassFilter === 'ALL' ? rows : rows.filter(r => r.classId === tabClassFilter);
+    return filteredRows.map(student => {
+      const completed = student.lessonStats.filter(ls => ls.status === 'COMPLETED');
+      const avg = completed.length > 0 
+        ? parseFloat((completed.reduce((sum, ls) => sum + ls.avgScore, 0) / completed.length).toFixed(2))
+        : 0;
+      const weakestLesson = completed.sort((a, b) => a.avgScore - b.avgScore)[0];
+      return { ...student, overallAvg: avg, weakestLesson, completedCount: completed.length };
+    })
+    .filter(s => s.completedCount > 0 && s.overallAvg < 6.5) // Focus on average < 6.5
+    .sort((a, b) => a.overallAvg - b.overallAvg);
+  }, [dashboardVisible, rows, tabClassFilter]);
 
   return (
-    <>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f7f1e8', pb: 8 }}>
       <Navbar />
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 6 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/teacher')}>
-            Quay lại
-          </Button>
-          <Typography variant="h4" fontWeight={800} sx={{ color: '#5d3c15' }}>
-            Thống kê học tập
+
+      <Container maxWidth="xl" sx={{ mt: 4 }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+          <IconButton onClick={() => navigate('/teacher')} sx={{ bgcolor: 'white', boxShadow: 1 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4" fontWeight={800} color="#5d3c15">
+            Thống kê Giáo dục
           </Typography>
-        </Box>
+        </Stack>
 
-        <Tabs value={tab} onChange={(_, next) => setTab(next)} sx={{ mb: 3 }}>
-          <Tab icon={<PeopleIcon />} iconPosition="start" label="Theo học sinh" />
-          <Tab icon={<BubbleChartIcon />} iconPosition="start" label="Theo bài học" />
-          <Tab icon={<BarChartIcon />} iconPosition="start" label="So sánh lớp" />
-        </Tabs>
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {/* STEP 1: FILTER PANEL */}
+        <Paper sx={{ p: 3, mb: 4, borderRadius: 4, border: '1px solid #eadcc5', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 2, color: '#8c5c22' }}>
+            Bước 1: Chọn bộ lọc dữ liệu (Bắt buộc)
+          </Typography>
+          <Grid container spacing={3} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Trường</InputLabel>
+                <Select
+                  value={selectedSchool}
+                  label="Trường"
+                  onChange={(e) => {
+                    setSelectedSchool(e.target.value);
+                    setSelectedYear('');
+                    setSelectedGrade('');
+                    setDashboardVisible(false);
+                  }}
+                  disabled={filtersLoading}
+                >
+                  {availableSchools.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small" disabled={!selectedSchool}>
+                <InputLabel>Năm học</InputLabel>
+                <Select
+                  value={selectedYear}
+                  label="Năm học"
+                  onChange={(e) => {
+                    setSelectedYear(e.target.value);
+                    setSelectedGrade('');
+                    setDashboardVisible(false);
+                  }}
+                >
+                  {availableYears.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small" disabled={!selectedYear}>
+                <InputLabel>Khối</InputLabel>
+                <Select
+                  value={selectedGrade}
+                  label="Khối"
+                  onChange={(e) => {
+                    setSelectedGrade(e.target.value);
+                    setDashboardVisible(false);
+                  }}
+                >
+                  {availableGrades.map(g => <MenuItem key={g} value={g}>{`Khối ${g}`}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Button 
+                variant="contained" 
+                fullWidth 
+                size="large"
+                disabled={!selectedSchool || !selectedYear || !selectedGrade || statsLoading}
+                onClick={handleFetchStats}
+                sx={{ bgcolor: '#d4a256', '&:hover': { bgcolor: '#b88a44' }, height: '40px' }}
+              >
+                {statsLoading ? <CircularProgress size={24} color="inherit" /> : 'Xem thống kê'}
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
 
-        {loading ? (
-          <Box sx={{ py: 8, textAlign: 'center' }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            <Paper sx={{ p: 2, borderRadius: 4, mb: 3 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Lọc theo lớp</InputLabel>
-                    <Select value={selectedClass} label="Lọc theo lớp" onChange={(e) => setSelectedClass(e.target.value)}>
-                      <MenuItem value="ALL">Tất cả lớp</MenuItem>
-                      {classes.map((studentClass) => (
-                        <MenuItem key={studentClass.id} value={studentClass.id}>
-                          {studentClass.name} - {studentClass.academicYearName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Chọn bài học</InputLabel>
-                    <Select value={selectedLessonId} label="Chọn bài học" onChange={(e) => setSelectedLessonId(e.target.value)}>
-                      <MenuItem value="ALL">Tất cả bài học</MenuItem>
-                      {lessons.map((lesson) => (
-                        <MenuItem key={lesson.id} value={lesson.id}>
-                          {lesson.lessonTitle}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </Paper>
+        {/* STEP 2: DASHBOARD */}
+        {dashboardVisible && (
+          <Paper sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #eadcc5', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white' }}>
+              <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto" sx={{ '& .MuiTab-root': { py: 2.5, fontWeight: 600 } }}>
+                <Tab icon={<BarChartIcon />} iconPosition="start" label="Tổng quan Khối & So sánh Lớp" />
+                <Tab icon={<PeopleIcon />} iconPosition="start" label="Học sinh cần chú ý" />
+                <Tab icon={<WarningIcon />} iconPosition="start" label="Phân tích Điểm mù kiến thức" />
+              </Tabs>
+            </Box>
 
-            {tab === 0 && (
-              <TableContainer component={Paper} sx={{ borderRadius: 4 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Học sinh</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Lớp</TableCell>
-                      {lessons
-                        .filter((lesson) => selectedLessonId === 'ALL' || lesson.id === selectedLessonId)
-                        .map((lesson) => (
-                          <TableCell key={lesson.id} align="center" sx={{ fontWeight: 700, minWidth: 160 }}>
-                            {lesson.lessonTitle}
-                          </TableCell>
-                        ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredRows.map((row) => (
-                      <TableRow key={row.studentId} hover>
-                        <TableCell>{row.fullName}</TableCell>
-                        <TableCell>{row.className} ({row.academicYearName})</TableCell>
-                        {row.lessonStats
-                          .filter((lessonStat) => selectedLessonId === 'ALL' || lessonStat.examId === selectedLessonId)
-                          .map((lessonStat) => (
-                            <TableCell key={lessonStat.examId} align="center">
-                              <Chip
-                                size="small"
-                                label={STATUS_LABEL[lessonStat.status]}
-                                color={lessonStat.status === 'COMPLETED' ? 'success' : lessonStat.status === 'IN_PROGRESS' ? 'warning' : 'default'}
-                                sx={{ mb: 0.5 }}
-                              />
-                              <Box>
-                                <AverageChip value={lessonStat.avgScore} />
-                              </Box>
-                            </TableCell>
-                          ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-
-            {tab === 1 && (
-              <Grid container spacing={3}>
-                <Grid item xs={12} lg={7}>
-                  <Paper sx={{ p: 3, borderRadius: 4, height: '100%' }}>
-                    <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: '#5d3c15' }}>
-                      Điểm trung bình theo bài học
-                    </Typography>
-                    <ResponsiveContainer width="100%" height={340}>
-                      <BarChart data={lessonAggregates.filter((lesson) => selectedLessonId === 'ALL' || lesson.id === selectedLessonId)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="label" interval={0} angle={-18} textAnchor="end" height={80} />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="avgScore" radius={[6, 6, 0, 0]}>
-                          {lessonAggregates.map((_, index) => (
-                            <Cell key={index} fill={nodeChartColors[index % nodeChartColors.length]} />
-                          ))}
+            <Box sx={{ p: 3, bgcolor: 'white' }}>
+              {/* TAB 1: OVERVIEW */}
+              {tab === 0 && (
+                <Box>
+                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight={700}>So sánh điểm trung bình giữa các lớp</Typography>
+                    <FormControl size="small" sx={{ minWidth: 250 }}>
+                      <InputLabel>Bài học (Tất cả)</InputLabel>
+                      <Select value={tabLessonFilter} label="Bài học (Tất cả)" onChange={(e) => setTabLessonFilter(e.target.value)}>
+                        <MenuItem value="ALL">-- Tất cả bài học --</MenuItem>
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                  <Box sx={{ height: 400 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={classComparisonData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="className" />
+                        <YAxis domain={[0, 10]} />
+                        <Tooltip formatter={(value) => [`${value} điểm`, 'Điểm trung bình']} />
+                        <Bar dataKey="avgScore" fill="#d4a256" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                          <LabelList dataKey="avgScore" position="top" />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} lg={5}>
-                  <Paper sx={{ p: 3, borderRadius: 4 }}>
-                    <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: '#5d3c15' }}>
-                      Tóm tắt bài học
-                    </Typography>
-                    <Table size="small">
-                      <TableHead>
+                  </Box>
+                </Box>
+              )}
+
+              {/* TAB 2: WEAK STUDENTS */}
+              {tab === 1 && (
+                <Box>
+                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} spacing={2} sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight={700}>Học sinh có điểm trung bình thấp (&lt; 6.5)</Typography>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Lọc theo Lớp</InputLabel>
+                      <Select value={tabClassFilter} label="Lọc theo Lớp" onChange={(e) => setTabClassFilter(e.target.value)}>
+                        <MenuItem value="ALL">-- Toàn khối --</MenuItem>
+                        {availableClassesInGrade.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table>
+                      <TableHead sx={{ bgcolor: '#f7f1e8' }}>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>Bài học</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>Hoàn thành</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>Đang làm</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>Điểm TB</TableCell>
+                          <TableCell><b>Học sinh</b></TableCell>
+                          <TableCell><b>Lớp</b></TableCell>
+                          <TableCell align="center"><b>ĐTB Tích lũy</b></TableCell>
+                          <TableCell><b>Bài làm kém nhất (Cần ôn tập)</b></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {lessonAggregates
-                          .filter((lesson) => selectedLessonId === 'ALL' || lesson.id === selectedLessonId)
-                          .map((lesson) => (
-                            <TableRow key={lesson.id}>
-                              <TableCell>{lesson.label}</TableCell>
-                              <TableCell>{lesson.completedCount}</TableCell>
-                              <TableCell>{lesson.inProgressCount}</TableCell>
-                              <TableCell><AverageChip value={lesson.avgScore} /></TableCell>
+                        {weakStudents.length === 0 ? (
+                          <TableRow><TableCell colSpan={4} align="center" sx={{ py: 3 }}>Tuyệt vời! Không có học sinh nào đạt điểm yếu.</TableCell></TableRow>
+                        ) : (
+                          weakStudents.map((s) => (
+                            <TableRow key={s.studentId}>
+                              <TableCell>{s.fullName}</TableCell>
+                              <TableCell>{s.className}</TableCell>
+                              <TableCell align="center">
+                                <Chip label={s.overallAvg} color="error" size="small" sx={{ fontWeight: 700 }} />
+                              </TableCell>
+                              <TableCell>
+                                {s.weakestLesson ? (
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <AssignmentLateIcon color="warning" fontSize="small" />
+                                    <Typography variant="body2">
+                                      {lessons.find(l => l.id === s.weakestLesson.examId)?.lessonTitle} ({s.weakestLesson.avgScore}đ)
+                                    </Typography>
+                                  </Stack>
+                                ) : '-'}
+                              </TableCell>
                             </TableRow>
-                          ))}
+                          ))
+                        )}
                       </TableBody>
                     </Table>
-                  </Paper>
-                </Grid>
-              </Grid>
-            )}
+                  </TableContainer>
+                </Box>
+              )}
 
-            {tab === 2 && (
-              <Paper sx={{ p: 3, borderRadius: 4 }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: '#5d3c15' }}>
-                  So sánh điểm trung bình giữa các lớp
-                </Typography>
-                <ResponsiveContainer width="100%" height={360}>
-                  <BarChart data={classChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="avgScore" fill="#8c5c22" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Paper>
-            )}
-          </>
+              {/* TAB 3: NODE STATS */}
+              {tab === 2 && (
+                <Box>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>Câu hỏi có tỉ lệ sai cao nhất</Typography>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Bài học</InputLabel>
+                      <Select value={tabLessonFilter} label="Bài học" onChange={(e) => setTabLessonFilter(e.target.value)}>
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel>Lớp</InputLabel>
+                      <Select value={tabClassFilter} label="Lớp" onChange={(e) => setTabClassFilter(e.target.value)}>
+                        <MenuItem value="ALL">-- Toàn khối --</MenuItem>
+                        {availableClassesInGrade.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+
+                  {nodeStatsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+                  ) : (
+                    <Grid container spacing={3}>
+                      {nodeStats.filter(n => n.errorRate !== null).sort((a, b) => b.errorRate - a.errorRate).slice(0, 6).map((node, index) => (
+                        <Grid item xs={12} md={6} lg={4} key={node.nodeId}>
+                          <Card variant="outlined" sx={{ borderColor: node.errorRate > 50 ? 'error.light' : 'divider', bgcolor: node.errorRate > 50 ? '#fffafa' : '#fff' }}>
+                            <CardContent>
+                              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                                <Chip label={`#${index + 1}`} size="small" color={node.errorRate > 50 ? 'error' : 'default'} />
+                                <Typography variant="h4" color={node.errorRate > 50 ? 'error.main' : 'text.secondary'} fontWeight={800}>
+                                  {node.errorRate}% sai
+                                </Typography>
+                              </Stack>
+                              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>{node.label}</Typography>
+                              <Typography variant="body2" fontWeight={500} sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                {node.question}
+                              </Typography>
+                              <Box sx={{ mt: 2, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  Đã làm: {node.total} | Sai: {node.incorrect} | Đúng: {node.correct}
+                                </Typography>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                      {nodeStats.length === 0 && (
+                        <Grid item xs={12}>
+                          <Alert severity="info">Chưa có dữ liệu làm bài cho bài học này.</Alert>
+                        </Grid>
+                      )}
+                    </Grid>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Paper>
         )}
       </Container>
-    </>
+    </Box>
   );
 }
