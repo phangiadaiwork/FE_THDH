@@ -461,10 +461,10 @@ export default function CreateExam() {
         </Alert>
       </Snackbar>
 
-      <Box sx={{ flex: 1, overflow: 'hidden', opacity: (importing || saving) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-        <Grid container sx={{ height: '100%' }}>
-          <Grid item xs={12} lg={4} sx={{ height: '100%', overflowY: 'auto', borderRight: { lg: '1px solid #eadcc5' } }}>
-            <Box sx={{ p: 2.5 }}>
+      <Box sx={{ flex: 1, overflow: { xs: 'auto', lg: 'hidden' }, opacity: (importing || saving) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+        <Grid container sx={{ height: { xs: 'auto', lg: '100%' }, flexDirection: { xs: 'column-reverse', lg: 'row' } }}>
+          <Grid item xs={12} lg={4} sx={{ height: { xs: 'auto', lg: '100%' }, overflowY: { xs: 'visible', lg: 'auto' }, borderRight: { lg: '1px solid #eadcc5' } }}>
+            <Box sx={{ p: { xs: 1.5, lg: 2.5 } }}>
               <Paper sx={{ p: 2.5, borderRadius: 4, mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#5d3c15', mb: 2 }}>
                   Thông tin bài học
@@ -624,7 +624,7 @@ export default function CreateExam() {
             </Box>
           </Grid>
 
-          <Grid item xs={12} lg={8} sx={{ height: '100%' }}>
+          <Grid item xs={12} lg={8} sx={{ height: { xs: 450, md: 600, lg: '100%' }, borderBottom: { xs: '2px solid #eadcc5', lg: 'none' } }}>
             <Box sx={{ height: '100%' }}>
               <ReactFlow
                 nodes={rfNodes}
