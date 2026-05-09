@@ -160,22 +160,7 @@ export default function Stats() {
     });
   }, [dashboardVisible, availableClassesInGrade, rows, tabLessonFilter]);
 
-  // Tab 1: Score Distribution Data
-  const scoreDistribution = useMemo(() => {
-    const bins = { '0-4': 0, '5-6': 0, '7-8': 0, '9-10': 0 };
-    studentMistakes.forEach(s => {
-      if (s.score < 5) bins['0-4']++;
-      else if (s.score < 7) bins['5-6']++;
-      else if (s.score < 9) bins['7-8']++;
-      else bins['9-10']++;
-    });
-    return [
-      { name: 'Yếu (0-4)', count: bins['0-4'], fill: '#d32f2f' },
-      { name: 'Trung bình (5-6)', count: bins['5-6'], fill: '#ed6c02' },
-      { name: 'Khá (7-8)', count: bins['7-8'], fill: '#2e7d32' },
-      { name: 'Giỏi (9-10)', count: bins['9-10'], fill: '#0288d1' },
-    ];
-  }, [studentMistakes]);
+
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f7f1e8', pb: 8 }}>
@@ -332,23 +317,20 @@ export default function Stats() {
                   ) : (
                     <>
                       <Grid container spacing={3} sx={{ mb: 4 }}>
-                        <Grid item xs={12} md={6} lg={4}>
+                        <Grid item xs={12}>
                           <Paper variant="outlined" sx={{ p: 2, height: '100%', borderRadius: 3 }}>
                             <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2, textAlign: 'center' }}>
-                              Phân bố điểm số
+                              Tần suất sai theo câu hỏi
                             </Typography>
-                            <Box sx={{ height: 250 }}>
+                            <Box sx={{ height: 300 }}>
                               <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={scoreDistribution} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
+                                <BarChart data={nodeStats.filter(n => n.incorrect > 0).sort((a, b) => b.incorrect - a.incorrect)} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
                                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                  <XAxis dataKey="label" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" interval={0} />
                                   <YAxis />
-                                  <Tooltip />
-                                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                                    {scoreDistribution.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                    <LabelList dataKey="count" position="top" />
+                                  <Tooltip formatter={(value) => [`${value} lượt sai`, 'Số lượt sai']} />
+                                  <Bar dataKey="incorrect" fill="#d4a256" radius={[4, 4, 0, 0]}>
+                                    <LabelList dataKey="incorrect" position="top" />
                                   </Bar>
                                 </BarChart>
                               </ResponsiveContainer>
