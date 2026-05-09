@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ReactFlow, {
   Background,
@@ -107,6 +107,68 @@ export default function CreateExam() {
   const fileInputRef = useRef(null);
   const idCounter = useRef(1);
 
+  const layoutAndSetNodes = useCallback((fetchedNodes) => {
+    const edges = [];
+    const childrenMap = {};
+    
+    fetchedNodes.forEach((n) => {
+      const pId = n.parentId || n.parentTempId;
+      const id = n.id || n.tempId;
+      if (pId) {
+        if (!childrenMap[pId]) childrenMap[pId] = [];
+        childrenMap[pId].push(n);
+        edges.push({
+          id: `e${pId}-${id}`,
+          source: String(pId),
+          target: String(id),
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#d4a256' },
+          style: { stroke: '#d4a256', strokeWidth: 2 },
+        });
+      }
+    });
+
+    const roots = fetchedNodes.filter((n) => !(n.parentId || n.parentTempId));
+    const layoutedNodes = [];
+    
+    const traverse = (node, depth, xOffset) => {
+      const id = String(node.id || node.tempId);
+      layoutedNodes.push({
+        id: id,
+        type: 'editorNode',
+        position: { x: xOffset, y: depth * 150 + 60 },
+        data: {
+          label: node.label,
+          question: node.question,
+          options: node.options || ['', '', '', ''],
+          correctAnswer: node.correctAnswer,
+          hint: node.hint,
+          points: node.points,
+          isMultiChoice: Array.isArray(node.options) && node.options.length > 0,
+        },
+      });
+
+      const children = childrenMap[id] || [];
+      children.sort((a, b) => (a.order || 0) - (b.order || 0));
+      const startX = xOffset - Math.max(0, children.length - 1) * 110;
+      children.forEach((child, index) => {
+        traverse(child, depth + 1, startX + index * 220);
+      });
+    };
+
+    roots.forEach((root, idx) => traverse(root, 0, 340 + idx * 300));
+    
+    setRfNodes(layoutedNodes);
+    setRfEdges(edges);
+    
+    let maxId = 0;
+    fetchedNodes.forEach((n) => {
+      const id = n.id || n.tempId;
+      const parsed = parseInt(String(id).replace(/\D/g, ''), 10);
+      if (!isNaN(parsed) && parsed > maxId) maxId = parsed;
+    });
+    idCounter.current = maxId + 1;
+  }, [setRfNodes, setRfEdges]);
+
   useEffect(() => {
     if (!id) return;
     const fetchExam = async () => {
@@ -130,58 +192,7 @@ export default function CreateExam() {
         setTheoryContent(data.theoryContent || '');
 
         if (data.nodes && data.nodes.length > 0) {
-          const fetchedNodes = data.nodes;
-          const edges = [];
-          
-          const childrenMap = {};
-          fetchedNodes.forEach((n) => {
-            if (n.parentId) {
-              if (!childrenMap[n.parentId]) childrenMap[n.parentId] = [];
-              childrenMap[n.parentId].push(n);
-              edges.push({
-                id: `e${n.parentId}-${n.id}`,
-                source: String(n.parentId),
-                target: String(n.id),
-                markerEnd: { type: MarkerType.ArrowClosed, color: '#d4a256' },
-                style: { stroke: '#d4a256', strokeWidth: 2 },
-              });
-            }
-          });
-
-          const roots = fetchedNodes.filter((n) => !n.parentId);
-          const layoutedNodes = [];
-          
-          const traverse = (node, depth, xOffset) => {
-            layoutedNodes.push({
-              id: String(node.id),
-              type: 'editorNode',
-              position: { x: xOffset, y: depth * 150 + 60 },
-              data: {
-                label: node.label,
-                question: node.question,
-                options: node.options || ['', '', '', ''],
-                correctAnswer: node.correctAnswer,
-                hint: node.hint,
-                points: node.points,
-                isMultiChoice: Array.isArray(node.options) && node.options.length > 0,
-              },
-            });
-
-            const children = childrenMap[node.id] || [];
-            children.sort((a, b) => a.order - b.order);
-            const startX = xOffset - Math.max(0, children.length - 1) * 110;
-            children.forEach((child, index) => {
-              traverse(child, depth + 1, startX + index * 220);
-            });
-          };
-
-          roots.forEach((root, idx) => traverse(root, 0, 340 + idx * 300));
-          
-          setRfNodes(layoutedNodes);
-          setRfEdges(edges);
-          
-          const maxId = Math.max(...fetchedNodes.map(n => n.id));
-          idCounter.current = maxId + 1;
+          layoutAndSetNodes(data.nodes);
         }
       } catch (err) {
         setSaveError('Không thể tải dữ liệu bài học.');
@@ -190,7 +201,7 @@ export default function CreateExam() {
       }
     };
     fetchExam();
-  }, [id, setRfNodes, setRfEdges]);
+  }, [id, layoutAndSetNodes]);
 
   const selectedNode = rfNodes.find((node) => node.id === selectedId);
 
@@ -371,41 +382,25 @@ export default function CreateExam() {
 
   const handleImportExcel = async (event) => {
     const file = event.target.files?.[0];
-    if (!file || !lessonTitle.trim()) {
-      setSaveError('Cần nhập thông tin bài học trước khi import Excel.');
-      return;
-    }
+    if (!file) return;
 
     setImporting(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('gradeLevel', gradeLevel);
-      formData.append('chapterTitle', `Chương ${Number(chapterDisplayOrder) || 1}: ${chapterTitle.trim()}`);
-      formData.append('chapterDisplayOrder', String(Number(chapterDisplayOrder) || 1));
-      formData.append('lessonNumber', String(Number(lessonNumber) || 1));
-      formData.append('lessonTitle', `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`);
-      formData.append('exerciseTitle', exerciseTitle);
-      formData.append('theoryContent', theoryContent);
-      formData.append('title', `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`);
-      
-      if (id) {
-        // Import currently only supports POST. If we need PUT for import, we can add it, but for now fallback to create or ignore.
-        // Actually, importing when editing is complex, so let's just use POST to create a new one.
-        setSaveError('Import Excel chỉ áp dụng khi tạo bài mới.');
-        setImporting(false);
-        return;
-      }
 
-      await api.post('/api/exams/import', formData, {
+      const { data } = await api.post('/api/exams/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setSuccessMessage('Import file Excel thành công! Đang chuyển hướng...');
-      setTimeout(() => navigate('/teacher'), 1500);
+
+      if (data.nodes) {
+        layoutAndSetNodes(data.nodes);
+        setSuccessMessage('Parse file Excel thành công! Vui lòng kiểm tra sơ đồ và ấn "Lưu bài học".');
+      }
     } catch (err) {
       setSaveError(err.response?.data?.error || 'Import Excel thất bại.');
-      setImporting(false);
     } finally {
+      setImporting(false);
       event.target.value = '';
     }
   };

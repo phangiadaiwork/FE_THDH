@@ -26,9 +26,10 @@ import {
   Stack,
   Switch,
   TextField,
-  Tooltip,
   Typography,
   Checkbox,
+  Snackbar,
+  Backdrop,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -377,7 +378,6 @@ export default function TeacherDashboard() {
       const { data: statsData } = await api.get('/api/attempts/stats');
       setClasses(statsData.classes || []);
       setImportSuccess('Import học sinh thành công!');
-      setTimeout(() => setImportSuccess(''), 4000);
     } catch (err) {
       const errorMessage = getApiErrorMessage(err, 'Import học sinh thất bại.');
       setImportError(errorMessage);
@@ -415,7 +415,24 @@ export default function TeacherDashboard() {
   return (
     <>
       <Navbar />
-      <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, mb: 6 }}>
+
+      <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, flexDirection: 'column', gap: 2 }} open={importingStudents}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6">Đang xử lý file Excel, vui lòng chờ...</Typography>
+      </Backdrop>
+
+      <Snackbar
+        open={Boolean(importSuccess)}
+        autoHideDuration={4000}
+        onClose={() => setImportSuccess('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%', borderRadius: 2 }}>
+          {importSuccess}
+        </Alert>
+      </Snackbar>
+
+      <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, mb: 6, opacity: importingStudents ? 0.6 : 1, transition: 'opacity 0.2s' }}>
         <Paper
           sx={{
             p: { xs: 2.5, md: 3.5 },
@@ -464,7 +481,6 @@ export default function TeacherDashboard() {
 
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
         {importError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setImportError('')}>{importError}</Alert>}
-        {importSuccess && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setImportSuccess('')}>{importSuccess}</Alert>}
 
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid item xs={12} md={4}>
