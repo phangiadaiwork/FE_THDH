@@ -84,6 +84,8 @@ export default function TeacherDashboard() {
   const [visClasses, setVisClasses] = useState([]);
   const [visSaving, setVisSaving] = useState(false);
   const [importingStudents, setImportingStudents] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('12');
   const [selectedChapterKey, setSelectedChapterKey] = useState('');
   const [sortBy, setSortBy] = useState('default');
@@ -220,9 +222,9 @@ export default function TeacherDashboard() {
       });
       const { data } = await api.get('/api/attempts/stats');
       setClasses(data.classes || []);
-      alert('Tạo tài khoản học sinh thành công!');
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Tạo tài khoản thất bại.');
+      const errorMessage = err.response?.data?.error || err.message || 'Tạo tài khoản thất bại.';
+      setFormError(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -246,6 +248,8 @@ export default function TeacherDashboard() {
     const file = event.target.files?.[0];
     if (!file) return;
     setImportingStudents(true);
+    setImportError('');
+    setImportSuccess('');
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -254,8 +258,11 @@ export default function TeacherDashboard() {
       });
       const { data } = await api.get('/api/attempts/stats');
       setClasses(data.classes || []);
+      setImportSuccess('Import học sinh thành công!');
+      setTimeout(() => setImportSuccess(''), 4000);
     } catch (err) {
-      alert(err.response?.data?.error || 'Import học sinh thất bại.');
+      const errorMessage = err.response?.data?.error || err.message || 'Import học sinh thất bại.';
+      setImportError(errorMessage);
     } finally {
       setImportingStudents(false);
       event.target.value = '';
@@ -338,6 +345,8 @@ export default function TeacherDashboard() {
         </Paper>
 
         {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {importError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setImportError('')}>{importError}</Alert>}
+        {importSuccess && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setImportSuccess('')}>{importSuccess}</Alert>}
 
         <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid item xs={12} md={4}>
