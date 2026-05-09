@@ -61,38 +61,6 @@ function sortLessons(lessons, sortBy) {
   });
 }
 
-function GradeCard({ selected, title, lessonCount, chapterCount, onClick }) {
-  return (
-    <Card
-      onClick={onClick}
-      sx={{
-        cursor: 'pointer',
-        height: '100%',
-        borderRadius: 4,
-        border: selected ? '2px solid #9c6b2f' : '1px solid #e6dccd',
-        background: selected
-          ? 'linear-gradient(135deg, #fff9f0 0%, #f7ebd5 100%)'
-          : 'linear-gradient(135deg, #fffdf8 0%, #f7f1e7 100%)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
-          transform: 'translateY(-3px)',
-          boxShadow: 6,
-        },
-      }}
-    >
-      <CardContent>
-        <Typography variant="h6" fontWeight={700} sx={{ color: '#6b4b1f', mb: 1 }}>
-          {title}
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label={`${chapterCount} chương`} size="small" sx={{ bgcolor: '#fff3db' }} />
-          <Chip label={`${lessonCount} bài`} size="small" sx={{ bgcolor: '#fff3db' }} />
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-}
-
 function getActionLabel(status, attemptCount) {
   if (status === 'IN_PROGRESS') return 'Tiếp tục';
   if ((attemptCount || 0) > 0) return 'Làm lại';
@@ -262,95 +230,75 @@ export default function StudentDashboard() {
           </Box>
         ) : (
           <>
-            <Typography variant="h5" fontWeight={800} sx={{ mb: 2, color: '#56391a' }}>
-              Chọn khối lớp
-            </Typography>
-
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-              {gradeStats.map((grade) => (
-                <Grid item xs={12} md={4} key={grade.gradeLevel}>
-                  <GradeCard
-                    selected={selectedGrade === grade.gradeLevel}
-                    title={`Lớp ${grade.gradeLevel}`}
-                    lessonCount={grade.lessonCount}
-                    chapterCount={grade.chapterCount}
-                    onClick={() => setSelectedGrade(grade.gradeLevel)}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} lg={4}>
-                <Paper sx={{ p: 2.5, borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce' }}>
-                  <Typography variant="h6" fontWeight={800} sx={{ color: '#6b4b1f', mb: 2 }}>
-                    Danh mục chương
-                  </Typography>
-
-                  <Stack spacing={1.2}>
-                    {chapters.length === 0 && (
-                      <Typography color="text.secondary">
-                        Khối này chưa có bài học được seed.
-                      </Typography>
-                    )}
-
-                    {chapters.map((chapter) => (
-                      <Button
-                        key={chapter.key}
-                        fullWidth
-                        onClick={() => setSelectedChapterKey(chapter.key)}
-                        variant={chapter.key === selectedChapterKey ? 'contained' : 'outlined'}
-                        sx={{
-                          justifyContent: 'space-between',
-                          textTransform: 'none',
-                          borderRadius: 3,
-                          py: 1.2,
-                          bgcolor: chapter.key === selectedChapterKey ? '#8c5c22' : 'transparent',
-                          borderColor: '#d9c1a0',
-                          color: chapter.key === selectedChapterKey ? 'white' : '#6b4b1f',
-                          '&:hover': {
-                            bgcolor: chapter.key === selectedChapterKey ? '#7b4f1e' : '#faf2e5',
-                            borderColor: '#c4903d',
-                          },
-                        }}
-                      >
-                        <Box sx={{ textAlign: 'left' }}>
-                          <Typography fontWeight={700}>{chapter.chapterTitle}</Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                            {chapter.lessons.length} bài
-                          </Typography>
-                        </Box>
-                      </Button>
+            <Paper sx={{ p: 2.5, borderRadius: 4, bgcolor: '#fffdf8', border: '1px solid #efe2ce', mb: 3 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+                  <InputLabel>Khối lớp</InputLabel>
+                  <Select
+                    value={selectedGrade}
+                    label="Khối lớp"
+                    onChange={(e) => setSelectedGrade(e.target.value)}
+                  >
+                    {gradeStats.map((grade) => (
+                      <MenuItem key={grade.gradeLevel} value={grade.gradeLevel}>
+                        Lớp {grade.gradeLevel} ({grade.lessonCount} bài)
+                      </MenuItem>
                     ))}
-                  </Stack>
-                </Paper>
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 260 } }}>
+                  <InputLabel>Danh mục chương</InputLabel>
+                  <Select
+                    value={selectedChapterKey}
+                    label="Danh mục chương"
+                    onChange={(e) => setSelectedChapterKey(e.target.value)}
+                  >
+                    {chapters.length === 0 ? (
+                      <MenuItem value="" disabled>
+                        Chưa có chương nào
+                      </MenuItem>
+                    ) : (
+                      chapters.map((chapter) => (
+                        <MenuItem key={chapter.key} value={chapter.key}>
+                          {chapter.chapterTitle} ({chapter.lessons.length} bài)
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select value={statusFilter} label="Trạng thái" onChange={(e) => setStatusFilter(e.target.value)}>
+                    <MenuItem value="ALL">Tất cả</MenuItem>
+                    <MenuItem value="NOT_STARTED">Chưa làm</MenuItem>
+                    <MenuItem value="IN_PROGRESS">Đang làm</MenuItem>
+                    <MenuItem value="COMPLETED">Đã hoàn thành</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+                  <InputLabel>Sắp xếp</InputLabel>
+                  <Select value={sortBy} label="Sắp xếp" onChange={(e) => setSortBy(e.target.value)}>
+                    <MenuItem value="default">Theo số bài</MenuItem>
+                    <MenuItem value="status">Ưu tiên trạng thái</MenuItem>
+                    <MenuItem value="score">Điểm cao trước</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+            </Paper>
+
+            <Grid container spacing={2.2}>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {selectedGrade ? `Đang xem Lớp ${selectedGrade}` : 'Chưa chọn khối lớp'}
+                  {chapters.find((chapter) => chapter.key === selectedChapterKey)
+                    ? ` • ${chapters.find((chapter) => chapter.key === selectedChapterKey)?.chapterTitle}`
+                    : ''}
+                </Typography>
               </Grid>
 
-              <Grid item xs={12} lg={8}>
-                <Paper sx={{ p: 2.5, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', mb: 3 }}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                      <InputLabel>Trạng thái</InputLabel>
-                      <Select value={statusFilter} label="Trạng thái" onChange={(e) => setStatusFilter(e.target.value)}>
-                        <MenuItem value="ALL">Tất cả</MenuItem>
-                        <MenuItem value="NOT_STARTED">Chưa làm</MenuItem>
-                        <MenuItem value="IN_PROGRESS">Đang làm</MenuItem>
-                        <MenuItem value="COMPLETED">Đã hoàn thành</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                      <InputLabel>Sắp xếp</InputLabel>
-                      <Select value={sortBy} label="Sắp xếp" onChange={(e) => setSortBy(e.target.value)}>
-                        <MenuItem value="default">Theo số bài</MenuItem>
-                        <MenuItem value="status">Ưu tiên trạng thái</MenuItem>
-                        <MenuItem value="score">Điểm cao trước</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Stack>
-                </Paper>
-
-                <Grid container spacing={2.2}>
                   {visibleLessons.map((lesson) => {
                     const status = lesson.attemptSummary?.status || 'NOT_STARTED';
                     const meta = STATUS_META[status];
@@ -442,8 +390,6 @@ export default function StudentDashboard() {
                       </Paper>
                     </Grid>
                   )}
-                </Grid>
-              </Grid>
             </Grid>
 
             {selectedLesson && (
