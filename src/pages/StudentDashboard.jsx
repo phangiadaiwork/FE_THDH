@@ -77,6 +77,7 @@ export default function StudentDashboard() {
   const [selectedLessonId, setSelectedLessonId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('default');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const user = (() => {
     try {
@@ -164,11 +165,29 @@ export default function StudentDashboard() {
     const chapter = chapters.find((item) => item.key === selectedChapterKey);
     const lessonPool = chapter?.lessons || [];
     const filtered = lessonPool.filter((lesson) => {
-      if (statusFilter === 'ALL') return true;
-      return (lesson.attemptSummary?.status || 'NOT_STARTED') === statusFilter;
+      if (statusFilter === 'ALL') {
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          return (
+            lesson.lessonTitle.toLowerCase().includes(query) ||
+            (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+          );
+        }
+        return true;
+      }
+      const statusMatch = (lesson.attemptSummary?.status || 'NOT_STARTED') === statusFilter;
+      if (!statusMatch) return false;
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          lesson.lessonTitle.toLowerCase().includes(query) ||
+          (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+        );
+      }
+      return true;
     });
     return sortLessons(filtered, sortBy);
-  }, [chapters, selectedChapterKey, sortBy, statusFilter]);
+  }, [chapters, selectedChapterKey, sortBy, statusFilter, searchQuery]);
 
   useEffect(() => {
     if (visibleLessons.length === 0) {
@@ -300,15 +319,33 @@ export default function StudentDashboard() {
             <Grid container spacing={3}>
               <Grid item xs={12} lg={4}>
                 <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { lg: 'calc(100vh - 380px)' }, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 1, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 0.5, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
                     Danh sách bài học
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontSize: { xs: '0.75rem', md: '0.85rem' } }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: { xs: '0.7rem', md: '0.8rem' } }}>
                     {selectedGrade ? `Lớp ${selectedGrade}` : 'Chưa chọn khối lớp'}
                     {chapters.find((chapter) => chapter.key === selectedChapterKey)
                       ? ` • ${chapters.find((chapter) => chapter.key === selectedChapterKey)?.chapterTitle}`
                       : ''}
                   </Typography>
+
+                  <Box sx={{ mb: 1.5 }}>
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm bài học..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #d9c1a0',
+                        fontSize: '0.85rem',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </Box>
 
                   <Stack spacing={1} sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
                     {visibleLessons.map((lesson) => {
