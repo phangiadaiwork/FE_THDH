@@ -20,7 +20,6 @@ import {
   Typography,
 } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -371,36 +370,29 @@ export default function StudentDashboard() {
                           }}
                         >
                           <CardContent sx={{ '&:last-child': { pb: 1.5 }, p: 1.5 }}>
-                            <Stack spacing={0.8}>
-                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                                <Chip label={meta.label} size="small" color={meta.color} />
-                                {lesson.attemptSummary?.avgScore !== null && (
-                                  <Chip
-                                    label={`TB ${lesson.attemptSummary.avgScore}`}
-                                    size="small"
-                                    color="success"
-                                    variant="outlined"
-                                  />
-                                )}
-                              </Stack>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Box sx={{ flex: 1, pr: 1 }}>
+                                <Stack spacing={0.6}>
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    <Chip label={meta.label} size="small" color={meta.color} />
+                                    {lesson.attemptSummary?.avgScore !== null && (
+                                      <Chip
+                                        label={`TB ${lesson.attemptSummary.avgScore}`}
+                                        size="small"
+                                        color="success"
+                                        variant="outlined"
+                                      />
+                                    )}
+                                  </Stack>
 
-                              <Box>
-                                <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
-                                  {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
-                                  {lesson.lessonTitle}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block', fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
-                                  {lesson.theoryContent?.slice(0, 100) || 'Chưa có nội dung lý thuyết.'}
-                                  {lesson.theoryContent?.length > 100 ? '...' : ''}
-                                </Typography>
+                                  <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '0.95rem', md: '1rem' } }}>
+                                    {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
+                                    {lesson.lessonTitle}
+                                  </Typography>
+                                </Stack>
                               </Box>
 
-                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                                <Chip icon={<MenuBookIcon />} label="Lý thuyết" size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                                <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount}N`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                              </Stack>
-
-                              <Stack direction="row" spacing={0.8} sx={{ display: { xs: 'flex', lg: 'none' } }}>
+                              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', ml: 1 }}>
                                 <Button
                                   variant="contained"
                                   startIcon={status === 'IN_PROGRESS' ? <AutorenewIcon /> : status === 'COMPLETED' ? <RestartAltIcon /> : <PlayArrowIcon />}
@@ -408,7 +400,7 @@ export default function StudentDashboard() {
                                     e.stopPropagation();
                                     navigate(`/student/exam/${lesson.id}`);
                                   }}
-                                  sx={{ flex: 1, textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' }, fontSize: '0.75rem' }}
+                                  sx={{ textTransform: 'none', bgcolor: '#8c5c22', '&:hover': { bgcolor: '#724619' }, fontSize: '0.78rem' }}
                                   size="small"
                                 >
                                   {getActionLabel(status, lesson.attemptSummary?.attemptCount)}
@@ -422,14 +414,14 @@ export default function StudentDashboard() {
                                       e.stopPropagation();
                                       navigate(`/student/exam/${lesson.id}?mode=review`);
                                     }}
-                                    sx={{ flex: 1, textTransform: 'none', fontSize: '0.75rem' }}
+                                    sx={{ textTransform: 'none', fontSize: '0.78rem' }}
                                     size="small"
                                   >
                                     Xem
                                   </Button>
                                 )}
-                              </Stack>
-                            </Stack>
+                              </Box>
+                            </Box>
                           </CardContent>
                         </Card>
                       );
