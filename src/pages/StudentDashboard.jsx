@@ -358,7 +358,7 @@ export default function StudentDashboard() {
                           key={lesson.id}
                           onClick={() => {
                             setSelectedLessonId(lesson.id);
-                            if (window.innerWidth < 960) setMobileViewDetail(true);
+                            if (window.innerWidth < 1200) setMobileViewDetail(true);
                           }}
                           sx={{
                             borderRadius: 3,
