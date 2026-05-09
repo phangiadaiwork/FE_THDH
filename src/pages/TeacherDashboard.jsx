@@ -587,7 +587,6 @@ export default function TeacherDashboard() {
                     </Stack>
 
                     <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15' }}>
-                      {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
                       {lesson.lessonTitle}
                     </Typography>
                     <Typography color="text.secondary" sx={{ mt: 1, minHeight: 48 }}>

@@ -89,7 +89,7 @@ export default function Stats() {
 
         return {
           id: lesson.id,
-          label: `${lesson.lessonNumber ? `Bài ${lesson.lessonNumber}` : 'Bài'}: ${lesson.lessonTitle}`,
+          label: lesson.lessonTitle,
           avgScore,
           completedCount: completed.length,
           inProgressCount: inProgress.length,
@@ -170,7 +170,6 @@ export default function Stats() {
                       <MenuItem value="ALL">Tất cả bài học</MenuItem>
                       {lessons.map((lesson) => (
                         <MenuItem key={lesson.id} value={lesson.id}>
-                          {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
                           {lesson.lessonTitle}
                         </MenuItem>
                       ))}
@@ -191,7 +190,7 @@ export default function Stats() {
                         .filter((lesson) => selectedLessonId === 'ALL' || lesson.id === selectedLessonId)
                         .map((lesson) => (
                           <TableCell key={lesson.id} align="center" sx={{ fontWeight: 700, minWidth: 160 }}>
-                            {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}` : lesson.lessonTitle}
+                            {lesson.lessonTitle}
                           </TableCell>
                         ))}
                     </TableRow>

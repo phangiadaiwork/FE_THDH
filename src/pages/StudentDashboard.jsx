@@ -386,7 +386,6 @@ export default function StudentDashboard() {
                                   </Stack>
 
                                   <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '0.95rem', md: '1rem' } }}>
-                                    {lesson.lessonNumber ? `Bài ${lesson.lessonNumber}: ` : ''}
                                     {lesson.lessonTitle}
                                   </Typography>
                                 </Stack>
@@ -465,7 +464,6 @@ export default function StudentDashboard() {
                         <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1.5 }}>
                           <AutoStoriesIcon sx={{ color: '#8c5c22', mt: 0.5, flexShrink: 0, fontSize: { xs: '1.5rem', md: '1.75rem' } }} />
                           <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', fontSize: { xs: '1rem', md: '1.35rem' }, lineHeight: 1.3 }}>
-                            {selectedLesson.lessonNumber ? `Bài ${selectedLesson.lessonNumber}: ` : ''}
                             {selectedLesson.lessonTitle}
                           </Typography>
                         </Stack>
