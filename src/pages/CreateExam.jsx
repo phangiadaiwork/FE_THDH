@@ -30,6 +30,8 @@ import {
   Typography,
   CircularProgress,
   FormControlLabel,
+  Snackbar,
+  Backdrop,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
@@ -91,6 +93,7 @@ export default function CreateExam() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [importing, setImporting] = useState(false);
 
   const [gradeLevel, setGradeLevel] = useState('12');
@@ -344,10 +347,10 @@ export default function CreateExam() {
       } else {
         await api.post('/api/exams', payloadObj);
       }
-      navigate('/teacher');
+      setSuccessMessage('Lưu bài học thành công! Đang chuyển hướng...');
+      setTimeout(() => navigate('/teacher'), 1500);
     } catch (err) {
       setSaveError(err.response?.data?.error || 'Không thể lưu bài học.');
-    } finally {
       setSaving(false);
     }
   };
@@ -397,11 +400,12 @@ export default function CreateExam() {
       await api.post('/api/exams/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      navigate('/teacher');
+      setSuccessMessage('Import file Excel thành công! Đang chuyển hướng...');
+      setTimeout(() => navigate('/teacher'), 1500);
     } catch (err) {
       setSaveError(err.response?.data?.error || 'Import Excel thất bại.');
-    } finally {
       setImporting(false);
+    } finally {
       event.target.value = '';
     }
   };
@@ -441,12 +445,28 @@ export default function CreateExam() {
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleImportExcel} />
 
       {saveError && (
-        <Alert severity="error" sx={{ mx: 2, mt: 2 }}>
+        <Alert severity="error" sx={{ mx: 2, mt: 2 }} onClose={() => setSaveError('')}>
           {saveError}
         </Alert>
       )}
 
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+      <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, flexDirection: 'column', gap: 2 }} open={importing || saving}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6">{importing ? 'Đang xử lý file Excel...' : 'Đang lưu bài học...'}</Typography>
+      </Backdrop>
+
+      <Snackbar
+        open={Boolean(successMessage)}
+        autoHideDuration={2000}
+        onClose={() => setSuccessMessage('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%', borderRadius: 2 }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      <Box sx={{ flex: 1, overflow: 'hidden', opacity: (importing || saving) ? 0.6 : 1, transition: 'opacity 0.2s' }}>
         <Grid container sx={{ height: '100%' }}>
           <Grid item xs={12} lg={4} sx={{ height: '100%', overflowY: 'auto', borderRight: { lg: '1px solid #eadcc5' } }}>
             <Box sx={{ p: 2.5 }}>
