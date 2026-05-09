@@ -61,6 +61,28 @@ function sortLessons(lessons, sortBy) {
   });
 }
 
+function getApiErrorMessage(error, fallbackMessage) {
+  const responseData = error?.response?.data;
+
+  if (responseData?.error) {
+    return responseData.error;
+  }
+
+  if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
+    return responseData.errors
+      .map((item) => {
+        if (item?.username && item?.error) {
+          return `${item.username}: ${item.error}`;
+        }
+
+        return item?.error || item?.message || String(item);
+      })
+      .join('; ');
+  }
+
+  return error?.message || fallbackMessage;
+}
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -223,7 +245,7 @@ export default function TeacherDashboard() {
       const { data } = await api.get('/api/attempts/stats');
       setClasses(data.classes || []);
     } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Tạo tài khoản thất bại.';
+      const errorMessage = getApiErrorMessage(err, 'Tạo tài khoản thất bại.');
       setFormError(errorMessage);
     } finally {
       setFormLoading(false);
@@ -261,7 +283,7 @@ export default function TeacherDashboard() {
       setImportSuccess('Import học sinh thành công!');
       setTimeout(() => setImportSuccess(''), 4000);
     } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Import học sinh thất bại.';
+      const errorMessage = getApiErrorMessage(err, 'Import học sinh thất bại.');
       setImportError(errorMessage);
     } finally {
       setImportingStudents(false);
