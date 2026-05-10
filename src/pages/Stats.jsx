@@ -420,7 +420,7 @@ export default function Stats() {
                               </Stack>
                               <Typography variant="subtitle2" component="div" color="text.secondary" sx={{ mb: 0.5 }}><MathText>{node.label}</MathText></Typography>
                               <Typography variant="body2" component="div" fontWeight={500} sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                <MathText>{node.question}</MathText>
+                                <MathText component="div">{node.question}</MathText>
                               </Typography>
                               <Box sx={{ mt: 2, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
                                 <Typography variant="caption" display="block" color="text.secondary">

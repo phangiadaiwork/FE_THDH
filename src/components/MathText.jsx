@@ -13,18 +13,18 @@ import 'katex/dist/katex.min.css';
  *   "Tính $x^2 + y^2$ khi $x = 3$"
  *   "Công thức: $$\\frac{a}{b}$$"
  */
-export default function MathText({ children, sx, variant, component, ...rest }) {
+export default function MathText({ children, sx, variant, component: Component = 'span', ...rest }) {
   const html = useMemo(() => {
     if (!children || typeof children !== 'string') return children || '';
     return renderMath(children);
   }, [children]);
 
   if (!children || typeof children !== 'string') {
-    return <span {...rest}>{children}</span>;
+    return <Component {...rest}>{children}</Component>;
   }
 
   return (
-    <span
+    <Component
       dangerouslySetInnerHTML={{ __html: html }}
       style={sx}
       {...rest}
@@ -59,8 +59,10 @@ function renderMath(text) {
     }
   });
 
-  // Convert newlines to <br> for multi-line text
-  result = result.replace(/\n/g, '<br/>');
+  // Convert newlines to <br> for multi-line text, but only if it's not already HTML from Rich Text Editor
+  if (!/<[a-z][\s\S]*>/i.test(result)) {
+    result = result.replace(/\n/g, '<br/>');
+  }
 
   // Third pass: unescape \$ to $
   result = result.replace(/\\\$/g, '$');

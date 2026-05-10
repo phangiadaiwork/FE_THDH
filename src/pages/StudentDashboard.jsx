@@ -473,7 +473,7 @@ export default function StudentDashboard() {
                           Lý thuyết
                         </Typography>
                         <Typography component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5 }}>
-                          <MathText>{selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}</MathText>
+                          <MathText component="div">{selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}</MathText>
                         </Typography>
 
                         <Divider sx={{ my: 1.5 }} />

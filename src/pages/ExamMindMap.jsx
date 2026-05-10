@@ -905,7 +905,7 @@ export default function ExamMindMap() {
         </DialogTitle>
         <DialogContent dividers sx={{ px: { xs: 1.5, sm: 3 }, py: 2 }}>
           <Typography variant="body1" component="div" sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-            <MathText>{dialogNode?.question}</MathText>
+            <MathText component="div">{dialogNode?.question}</MathText>
           </Typography>
           <NodeImage src={dialogNode?.questionImage} alt="Ảnh câu hỏi" />
 
@@ -972,7 +972,7 @@ export default function ExamMindMap() {
                   {dialogNode?.hint && (
                     <>
                       <Alert severity="info" icon={<LightbulbIcon />}>
-                        <strong>Gợi ý:</strong> <MathText>{dialogNode.hint}</MathText>
+                        <strong>Gợi ý:</strong> <MathText component="div">{dialogNode.hint}</MathText>
                       </Alert>
                       <NodeImage src={dialogNode?.hintImage} alt="Ảnh gợi ý" />
                     </>
@@ -1028,7 +1028,7 @@ export default function ExamMindMap() {
               {dialogNode?.hint && (
                 <>
                   <Alert severity="info" icon={<LightbulbIcon />}>
-                    <strong>Gợi ý:</strong> <MathText>{dialogNode.hint}</MathText>
+                    <strong>Gợi ý:</strong> <MathText component="div">{dialogNode.hint}</MathText>
                   </Alert>
                   <NodeImage src={dialogNode?.hintImage} alt="Ảnh gợi ý" />
                 </>

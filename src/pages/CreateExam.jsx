@@ -44,6 +44,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
 import Navbar from '../components/Navbar';
 import MathText from '../components/MathText';
+import RichTextEditor from '../components/RichTextEditor';
 import api from '../api';
 
 const GRADE_OPTIONS = ['10', '11', '12'];
@@ -660,13 +661,10 @@ export default function CreateExam() {
                     )}
                   </Grid>
                   <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={5}
+                    <RichTextEditor
                       label="Lý thuyết"
                       value={theoryContent}
-                      onChange={(e) => setTheoryContent(e.target.value)}
+                      onChange={(val) => setTheoryContent(val)}
                     />
                     {theoryContent && theoryContent.includes('$') && (
                       <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
@@ -715,10 +713,14 @@ export default function CreateExam() {
                       )}
                     </Box>
                     <Box>
-                      <TextField fullWidth multiline minRows={3} size="small" label="Câu hỏi" value={form.question} onChange={(e) => updateForm('question', e.target.value)} />
+                      <RichTextEditor 
+                        label="Câu hỏi" 
+                        value={form.question} 
+                        onChange={(val) => updateForm('question', val)} 
+                      />
                       {form.question && form.question.includes('$') && (
                         <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.question}</MathText>
+                          <Typography variant="caption" color="text.secondary">Xem trước (Toán học):</Typography> <MathText>{form.question}</MathText>
                         </Box>
                       )}
                     </Box>
@@ -789,10 +791,14 @@ export default function CreateExam() {
                     </Box>
                     <ImageUploadField label="đáp án" value={form.answerImage} onChange={(url) => updateForm('answerImage', url)} disabled={saving} />
                     <Box>
-                      <TextField fullWidth size="small" label="Gợi ý" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} />
+                      <RichTextEditor 
+                        label="Gợi ý" 
+                        value={form.hint} 
+                        onChange={(val) => updateForm('hint', val)} 
+                      />
                       {form.hint && form.hint.includes('$') && (
                         <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.hint}</MathText>
+                          <Typography variant="caption" color="text.secondary">Xem trước (Toán học):</Typography> <MathText>{form.hint}</MathText>
                         </Box>
                       )}
                     </Box>
