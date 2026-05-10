@@ -43,6 +43,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
 import Navbar from '../components/Navbar';
+import MathText from '../components/MathText';
 import api from '../api';
 
 const GRADE_OPTIONS = ['10', '11', '12'];
@@ -62,8 +63,8 @@ function EditorNode({ data, selected }) {
       }}
     >
       <Handle type="target" position={Position.Top} />
-      <Typography variant="body2" fontWeight={700}>
-        {data.label || 'Node mới'}
+      <Typography variant="body2" component="span" fontWeight={700}>
+        <MathText>{data.label || 'Node mới'}</MathText>
       </Typography>
       <Typography variant="caption" color="text.secondary" display="block">
         {data.points} điểm
@@ -74,6 +75,17 @@ function EditorNode({ data, selected }) {
 }
 
 const nodeTypes = { editorNode: EditorNode };
+
+function stripOptionPrefix(options) {
+  if (!Array.isArray(options)) return ['', '', '', ''];
+  const stripped = options.map((opt) => {
+    if (typeof opt === 'string') return opt.replace(/^[A-D]\. ?/, '');
+    return opt || '';
+  });
+  // Pad to 4 options
+  while (stripped.length < 4) stripped.push('');
+  return stripped;
+}
 
 const EMPTY_FORM = {
   label: '',
@@ -216,7 +228,7 @@ export default function CreateExam() {
           label: node.label,
           question: node.question,
           questionImage: node.questionImage || null,
-          options: node.options || ['', '', '', ''],
+          options: stripOptionPrefix(node.options),
           optionImages: node.optionImages || [null, null, null, null],
           correctAnswer: node.correctAnswer,
           answerImage: node.answerImage || null,
@@ -592,6 +604,11 @@ export default function CreateExam() {
                       value={chapterTitle}
                       onChange={(e) => setChapterTitle(e.target.value)}
                     />
+                    {chapterTitle && chapterTitle.includes('$') && (
+                      <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{chapterTitle}</MathText>
+                      </Box>
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <TextField
@@ -622,6 +639,11 @@ export default function CreateExam() {
                       value={lessonTitle}
                       onChange={(e) => setLessonTitle(e.target.value)}
                     />
+                    {lessonTitle && lessonTitle.includes('$') && (
+                      <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{lessonTitle}</MathText>
+                      </Box>
+                    )}
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
@@ -631,6 +653,11 @@ export default function CreateExam() {
                       value={exerciseTitle}
                       onChange={(e) => setExerciseTitle(e.target.value)}
                     />
+                    {exerciseTitle && exerciseTitle.includes('$') && (
+                      <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{exerciseTitle}</MathText>
+                      </Box>
+                    )}
                   </Grid>
                   <Grid item xs={12}>
                     <TextField
@@ -641,6 +668,11 @@ export default function CreateExam() {
                       value={theoryContent}
                       onChange={(e) => setTheoryContent(e.target.value)}
                     />
+                    {theoryContent && theoryContent.includes('$') && (
+                      <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{theoryContent}</MathText>
+                      </Box>
+                    )}
                   </Grid>
                 </Grid>
               </Paper>
@@ -674,8 +706,22 @@ export default function CreateExam() {
                     <Typography variant="caption" color="text.secondary" sx={{ bgcolor: '#f5f0e6', px: 1.5, py: 0.7, borderRadius: 1, fontSize: '0.72rem' }}>
                       💡 Hỗ trợ công thức Toán: dùng <strong>$...$</strong> cho inline, <strong>$$...$$</strong> cho block. VD: <code>$x^2 + y^2 = z^2$</code>
                     </Typography>
-                    <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
-                    <TextField fullWidth multiline minRows={3} size="small" label="Câu hỏi" value={form.question} onChange={(e) => updateForm('question', e.target.value)} />
+                    <Box>
+                      <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
+                      {form.label && form.label.includes('$') && (
+                        <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.label}</MathText>
+                        </Box>
+                      )}
+                    </Box>
+                    <Box>
+                      <TextField fullWidth multiline minRows={3} size="small" label="Câu hỏi" value={form.question} onChange={(e) => updateForm('question', e.target.value)} />
+                      {form.question && form.question.includes('$') && (
+                        <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.question}</MathText>
+                        </Box>
+                      )}
+                    </Box>
                     <ImageUploadField label="câu hỏi" value={form.questionImage} onChange={(url) => updateForm('questionImage', url)} disabled={saving} />
                     <FormControlLabel
                       control={
@@ -691,13 +737,20 @@ export default function CreateExam() {
                       <Stack spacing={1}>
                         {['A', 'B', 'C', 'D'].map((label, index) => (
                           <Box key={label}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label={`Phương án ${label}`}
-                              value={form.options[index]}
-                              onChange={(e) => updateOption(index, e.target.value)}
-                            />
+                            <Box>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label={`Phương án ${label}`}
+                                value={form.options[index]}
+                                onChange={(e) => updateOption(index, e.target.value)}
+                              />
+                              {form.options[index] && form.options[index].includes('$') && (
+                                <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.options[index]}</MathText>
+                                </Box>
+                              )}
+                            </Box>
                             <ImageUploadField
                               label={`phương án ${label}`}
                               value={form.optionImages?.[index] || null}
@@ -713,22 +766,36 @@ export default function CreateExam() {
                       </Stack>
                     )}
 
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label={form.isMultiChoice ? 'Đáp án đúng (A/B/C/D)' : 'Đáp án đúng'}
-                      value={form.correctAnswer}
-                      onChange={(e) =>
-                        updateForm(
-                          'correctAnswer',
-                          form.isMultiChoice
-                            ? e.target.value.toUpperCase().replace(/[^ABCD]/g, '')
-                            : e.target.value
-                        )
-                      }
-                    />
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label={form.isMultiChoice ? 'Đáp án đúng (A/B/C/D)' : 'Đáp án đúng'}
+                        value={form.correctAnswer}
+                        onChange={(e) =>
+                          updateForm(
+                            'correctAnswer',
+                            form.isMultiChoice
+                              ? e.target.value.toUpperCase().replace(/[^ABCD]/g, '')
+                              : e.target.value
+                          )
+                        }
+                      />
+                      {!form.isMultiChoice && form.correctAnswer && form.correctAnswer.includes('$') && (
+                        <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.correctAnswer}</MathText>
+                        </Box>
+                      )}
+                    </Box>
                     <ImageUploadField label="đáp án" value={form.answerImage} onChange={(url) => updateForm('answerImage', url)} disabled={saving} />
-                    <TextField fullWidth size="small" label="Gợi ý" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} />
+                    <Box>
+                      <TextField fullWidth size="small" label="Gợi ý" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} />
+                      {form.hint && form.hint.includes('$') && (
+                        <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Xem trước:</Typography> <MathText>{form.hint}</MathText>
+                        </Box>
+                      )}
+                    </Box>
                     <ImageUploadField label="gợi ý" value={form.hintImage} onChange={(url) => updateForm('hintImage', url)} disabled={saving} />
                     <TextField fullWidth size="small" type="number" label="Điểm" value={form.points} onChange={(e) => updateForm('points', Math.max(1, Number(e.target.value) || 1))} />
                   </Stack>
@@ -754,7 +821,7 @@ export default function CreateExam() {
                     label: node.data.label || '',
                     question: node.data.question || '',
                     questionImage: node.data.questionImage || null,
-                    options: node.data.options || ['', '', '', ''],
+                    options: stripOptionPrefix(node.data.options),
                     optionImages: node.data.optionImages || [null, null, null, null],
                     correctAnswer: node.data.correctAnswer || '',
                     answerImage: node.data.answerImage || null,

@@ -34,6 +34,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LabelList } from 'recharts';
 import Navbar from '../components/Navbar';
+import MathText from '../components/MathText';
 import api from '../api';
 
 export default function Stats() {
@@ -269,7 +270,7 @@ export default function Stats() {
                       <InputLabel>Bài học (Tất cả)</InputLabel>
                       <Select value={tabLessonFilter} label="Bài học (Tất cả)" onChange={(e) => setTabLessonFilter(e.target.value)}>
                         <MenuItem value="ALL">-- Tất cả bài học --</MenuItem>
-                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}><MathText>{l.lessonTitle}</MathText></MenuItem>)}
                       </Select>
                     </FormControl>
                   </Stack>
@@ -298,7 +299,7 @@ export default function Stats() {
                       <InputLabel>Bài học</InputLabel>
                       <Select value={tabLessonFilter} label="Bài học" onChange={(e) => setTabLessonFilter(e.target.value)}>
                         <MenuItem value="ALL" disabled>-- Chọn bài học --</MenuItem>
-                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}><MathText>{l.lessonTitle}</MathText></MenuItem>)}
                       </Select>
                     </FormControl>
                     <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -363,8 +364,8 @@ export default function Stats() {
                                   <TableCell>
                                     <Stack direction="row" flexWrap="wrap" gap={1}>
                                       {s.wrongAnswers.map(wa => (
-                                        <Tooltip key={wa.nodeId} title={wa.question || 'Không có nội dung câu hỏi'}>
-                                          <Chip label={wa.label} size="small" variant="outlined" color="error" />
+                                        <Tooltip key={wa.nodeId} title={<MathText>{wa.question || 'Không có nội dung câu hỏi'}</MathText>}>
+                                          <Chip label={<MathText>{wa.label}</MathText>} size="small" variant="outlined" color="error" />
                                         </Tooltip>
                                       ))}
                                       {s.wrongAnswers.length === 0 && (
@@ -391,7 +392,7 @@ export default function Stats() {
                     <FormControl size="small" sx={{ minWidth: 200 }}>
                       <InputLabel>Bài học</InputLabel>
                       <Select value={tabLessonFilter} label="Bài học" onChange={(e) => setTabLessonFilter(e.target.value)}>
-                        {lessons.map(l => <MenuItem key={l.id} value={l.id}>{l.lessonTitle}</MenuItem>)}
+                        {lessons.map(l => <MenuItem key={l.id} value={l.id}><MathText>{l.lessonTitle}</MathText></MenuItem>)}
                       </Select>
                     </FormControl>
                     <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -417,9 +418,9 @@ export default function Stats() {
                                   {node.errorRate}% sai
                                 </Typography>
                               </Stack>
-                              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>{node.label}</Typography>
-                              <Typography variant="body2" fontWeight={500} sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                {node.question}
+                              <Typography variant="subtitle2" component="div" color="text.secondary" sx={{ mb: 0.5 }}><MathText>{node.label}</MathText></Typography>
+                              <Typography variant="body2" component="div" fontWeight={500} sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                <MathText>{node.question}</MathText>
                               </Typography>
                               <Box sx={{ mt: 2, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
                                 <Typography variant="caption" display="block" color="text.secondary">
