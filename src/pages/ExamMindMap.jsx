@@ -478,31 +478,36 @@ export default function ExamMindMap() {
       blockRef.current = true;
       setAnswerPending(true);
 
-      const correct = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
       const currentNodeId = dialogNodeId;
 
       setAnswer(ans.trim());
-      setNodeAnswerMap((prev) => ({
-        ...prev,
-        [currentNodeId]: { answer: ans.trim(), isCorrect: correct },
-      }));
-
+      // Optimistically update answer without isCorrect yet, or keep it simple.
+      // We will wait for the server's truth.
+      
       try {
+        let isCorrectFromServer = false;
         if (attemptIdRef.current) {
-          await api.post('/api/attempts/answer', {
+          const res = await api.post('/api/attempts/answer', {
             attemptId: attemptIdRef.current,
             nodeId: currentNodeId,
             answer: ans.trim(),
-            isCorrect: correct,
           });
+          isCorrectFromServer = res.data.isCorrect;
+        } else {
+          isCorrectFromServer = ans.trim().toUpperCase() === dialogNode.correctAnswer.trim().toUpperCase();
         }
 
-        if (correct) {
+        setNodeAnswerMap((prev) => ({
+          ...prev,
+          [currentNodeId]: { answer: ans.trim(), isCorrect: isCorrectFromServer },
+        }));
+
+        if (isCorrectFromServer) {
           scoreRef.current += dialogNode.points;
           setScoreDisplay(scoreRef.current);
         }
-        applyNodeStatus(currentNodeId, correct ? 'correct' : 'incorrect');
-        setAnswerResult(correct ? 'correct' : 'incorrect');
+        applyNodeStatus(currentNodeId, isCorrectFromServer ? 'correct' : 'incorrect');
+        setAnswerResult(isCorrectFromServer ? 'correct' : 'incorrect');
       } catch (error) {
         console.error(error);
         blockRef.current = false;
@@ -578,7 +583,7 @@ export default function ExamMindMap() {
 
   const closeDialog = () => setDialogNodeId(null);
 
-  const completeAttempt = async (finalScore) => {
+  const completeAttempt = async () => {
     if (submitting) return;
     setSubmitting(true);
     setDialogNodeId(null); 
@@ -586,9 +591,12 @@ export default function ExamMindMap() {
       if (attemptIdRef.current) {
         const { data } = await api.post('/api/attempts/complete', {
           attemptId: attemptIdRef.current,
-          score: finalScore,
         });
         setSubmitResult(data);
+        if (data.attempt && data.attempt.score !== undefined) {
+          setScoreDisplay(data.attempt.score);
+          scoreRef.current = data.attempt.score;
+        }
         setFinished(true);
         setResultDialogOpen(true);
       }
@@ -747,7 +755,7 @@ export default function ExamMindMap() {
             size="small"
             variant="contained"
             color="success"
-            onClick={() => completeAttempt(scoreDisplay)}
+            onClick={() => completeAttempt()}
             disabled={actionBusy || finished}
             endIcon={actionBusy ? <CircularProgress size={16} /> : undefined}
             sx={{ textTransform: 'none' }}
