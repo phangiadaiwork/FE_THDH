@@ -42,7 +42,31 @@ import CloseIcon from '@mui/icons-material/Close';
 import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import Navbar from '../components/Navbar';
+import MathText from '../components/MathText';
 import api from '../api';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+function NodeImage({ src, alt, sx }) {
+  if (!src) return null;
+  return (
+    <Box
+      component="img"
+      src={`${API_BASE}${src}`}
+      alt={alt || ''}
+      sx={{
+        maxWidth: '100%',
+        maxHeight: 240,
+        borderRadius: 2,
+        border: '1px solid #e0e0e0',
+        objectFit: 'contain',
+        display: 'block',
+        my: 1,
+        ...sx,
+      }}
+    />
+  );
+}
 
 // ─── Màu theo trạng thái node ──────────────────────────────────────────────
 const STATUS_STYLE = {
@@ -141,7 +165,7 @@ function getDFSOrder(root) {
 }
 
 // ─── OptionGrid dùng chung (responsive bên trong) ──────────────────────────
-const OptionGrid = memo(({ options, correctAnswer, chosenAnswer, onSelect, readOnly }) => {
+const OptionGrid = memo(({ options, optionImages, correctAnswer, chosenAnswer, onSelect, readOnly }) => {
   const handleClick = (letter) => {
     if (!readOnly && onSelect) onSelect(letter);
   };
@@ -159,6 +183,7 @@ const OptionGrid = memo(({ options, correctAnswer, chosenAnswer, onSelect, readO
         const letter = opt.charAt(0);
         const isChosen = letter === chosenAnswer;
         const isCorrectAnswer = letter === correctAnswer;
+        const optImage = optionImages?.[i] || null;
         let borderColor = '#e0e0e0';
         let bgColor = 'white';
         let icon = null;
@@ -202,12 +227,18 @@ const OptionGrid = memo(({ options, correctAnswer, chosenAnswer, onSelect, readO
                     borderColor: isChosen ? '#43a047' : '#f9a825',
                   }
                 : {},
+              flexDirection: optImage ? 'column' : 'row',
             }}
           >
-            <Typography variant="body2" sx={{ flex: 1, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
-              {opt}
-            </Typography>
-            {icon}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+              <Typography variant="body2" component="span" sx={{ flex: 1, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
+                <MathText>{opt}</MathText>
+              </Typography>
+              {icon}
+            </Box>
+            {optImage && (
+              <NodeImage src={optImage} alt={`Option ${letter}`} sx={{ maxHeight: 120, my: 0.5 }} />
+            )}
           </Box>
         );
       })}
@@ -873,15 +904,17 @@ export default function ExamMindMap() {
           </Box>
         </DialogTitle>
         <DialogContent dividers sx={{ px: { xs: 1.5, sm: 3 }, py: 2 }}>
-          <Typography variant="body1" sx={{ mb: 2, fontWeight: 500, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-            {dialogNode?.question}
+          <Typography variant="body1" component="div" sx={{ mb: 1, fontWeight: 500, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            <MathText>{dialogNode?.question}</MathText>
           </Typography>
+          <NodeImage src={dialogNode?.questionImage} alt="Ảnh câu hỏi" />
 
           {/* Chế độ trả lời – chưa có kết quả */}
           {isAnswerMode && answerResult === null &&
             (hasOptions ? (
               <OptionGrid
                 options={dialogNode.options}
+                optionImages={dialogNode.optionImages}
                 chosenAnswer={answer}
                 correctAnswer={null}
                 onSelect={handleSelectOption}
@@ -923,26 +956,33 @@ export default function ExamMindMap() {
               ) : (
                 <Box>
                   <Alert severity="error" sx={{ mb: 1 }}>
-                    <strong>Chưa đúng!</strong> Bạn trả lời: <em>{answer}</em>
+                    <strong>Chưa đúng!</strong> Bạn trả lời: <em><MathText>{answer}</MathText></em>
                     <br />
                     Đáp án đúng:{' '}
                     <strong>
-                      {hasOptions
-                        ? dialogNode.options.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
-                          dialogNode.correctAnswer
-                        : dialogNode?.correctAnswer}
+                      <MathText>
+                        {hasOptions
+                          ? dialogNode.options.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
+                            dialogNode.correctAnswer
+                          : dialogNode?.correctAnswer}
+                      </MathText>
                     </strong>
                   </Alert>
+                  <NodeImage src={dialogNode?.answerImage} alt="Ảnh đáp án" />
                   {dialogNode?.hint && (
-                    <Alert severity="info" icon={<LightbulbIcon />}>
-                      <strong>Gợi ý:</strong> {dialogNode.hint}
-                    </Alert>
+                    <>
+                      <Alert severity="info" icon={<LightbulbIcon />}>
+                        <strong>Gợi ý:</strong> <MathText>{dialogNode.hint}</MathText>
+                      </Alert>
+                      <NodeImage src={dialogNode?.hintImage} alt="Ảnh gợi ý" />
+                    </>
                   )}
                 </Box>
               )}
               {hasOptions && (
                 <OptionGrid
                   options={dialogNode.options}
+                  optionImages={dialogNode.optionImages}
                   correctAnswer={dialogNode.correctAnswer}
                   chosenAnswer={answer}
                   readOnly
@@ -957,6 +997,7 @@ export default function ExamMindMap() {
               {hasOptions && (
                 <OptionGrid
                   options={dialogNode.options}
+                  optionImages={dialogNode.optionImages}
                   correctAnswer={dialogNode.correctAnswer}
                   chosenAnswer={reviewData?.answer}
                   readOnly
@@ -967,22 +1008,30 @@ export default function ExamMindMap() {
                   <strong>Bạn đã trả lời đúng!</strong> Câu trả lời: <em>{reviewData.answer}</em>
                 </Alert>
               ) : (
-                <Alert severity="error" icon={<CancelIcon />} sx={{ mb: 1.5 }}>
-                  <strong>Bạn đã trả lời sai.</strong> Câu trả lời của bạn: <em>{reviewData?.answer}</em>
-                  <br />
-                  Đáp án đúng:{' '}
-                  <strong>
-                    {hasOptions
-                      ? dialogNode.options?.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
-                        dialogNode.correctAnswer
-                      : dialogNode?.correctAnswer}
-                  </strong>
-                </Alert>
+                <>
+                  <Alert severity="error" icon={<CancelIcon />} sx={{ mb: 1.5 }}>
+                    <strong>Bạn đã trả lời sai.</strong> Câu trả lời của bạn: <em><MathText>{reviewData?.answer}</MathText></em>
+                    <br />
+                    Đáp án đúng:{' '}
+                    <strong>
+                      <MathText>
+                        {hasOptions
+                          ? dialogNode.options?.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
+                            dialogNode.correctAnswer
+                          : dialogNode?.correctAnswer}
+                      </MathText>
+                    </strong>
+                  </Alert>
+                  <NodeImage src={dialogNode?.answerImage} alt="Ảnh đáp án" />
+                </>
               )}
               {dialogNode?.hint && (
-                <Alert severity="info" icon={<LightbulbIcon />}>
-                  <strong>Gợi ý:</strong> {dialogNode.hint}
-                </Alert>
+                <>
+                  <Alert severity="info" icon={<LightbulbIcon />}>
+                    <strong>Gợi ý:</strong> <MathText>{dialogNode.hint}</MathText>
+                  </Alert>
+                  <NodeImage src={dialogNode?.hintImage} alt="Ảnh gợi ý" />
+                </>
               )}
             </Box>
           )}

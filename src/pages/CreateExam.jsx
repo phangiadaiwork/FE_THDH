@@ -40,6 +40,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ImageIcon from '@mui/icons-material/Image';
+import CloseIcon from '@mui/icons-material/Close';
 import Navbar from '../components/Navbar';
 import api from '../api';
 
@@ -76,12 +78,85 @@ const nodeTypes = { editorNode: EditorNode };
 const EMPTY_FORM = {
   label: '',
   question: '',
+  questionImage: null,
   options: ['', '', '', ''],
+  optionImages: [null, null, null, null],
   correctAnswer: '',
+  answerImage: null,
   hint: '',
+  hintImage: null,
   points: 1,
   isMultiChoice: false,
 };
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+function ImageUploadField({ label, value, onChange, disabled }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onChange(data.url);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemove = async () => {
+    if (value) {
+      try {
+        await api.delete('/api/upload', { data: { url: value } });
+      } catch (_) { /* ignore */ }
+      onChange(null);
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 0.5, mb: 0.5 }}>
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleUpload} disabled={disabled || uploading} />
+      {value ? (
+        <Box sx={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+          <Box
+            component="img"
+            src={`${API_BASE}${value}`}
+            alt={label}
+            sx={{ maxWidth: '100%', maxHeight: 160, borderRadius: 2, border: '1px solid #e0e0e0', objectFit: 'contain', display: 'block' }}
+          />
+          <IconButton
+            size="small"
+            onClick={handleRemove}
+            sx={{ position: 'absolute', top: -8, right: -8, bgcolor: '#fff', boxShadow: 1, '&:hover': { bgcolor: '#fce4ec' } }}
+          >
+            <CloseIcon fontSize="small" color="error" />
+          </IconButton>
+        </Box>
+      ) : (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={uploading ? <CircularProgress size={14} /> : <ImageIcon />}
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled || uploading}
+          sx={{ textTransform: 'none', color: '#8c5c22', fontSize: '0.8rem' }}
+        >
+          {uploading ? 'Đang tải...' : `Thêm ảnh ${label}`}
+        </Button>
+      )}
+    </Box>
+  );
+}
 
 export default function CreateExam() {
   const navigate = useNavigate();
@@ -140,9 +215,13 @@ export default function CreateExam() {
         data: {
           label: node.label,
           question: node.question,
+          questionImage: node.questionImage || null,
           options: node.options || ['', '', '', ''],
+          optionImages: node.optionImages || [null, null, null, null],
           correctAnswer: node.correctAnswer,
+          answerImage: node.answerImage || null,
           hint: node.hint,
+          hintImage: node.hintImage || null,
           points: node.points,
           isMultiChoice: Array.isArray(node.options) && node.options.length > 0,
         },
@@ -327,14 +406,22 @@ export default function CreateExam() {
             .map((option, index) => `${['A', 'B', 'C', 'D'][index]}. ${option}`)
         : null;
 
+      const optionImages = node.data.isMultiChoice
+        ? node.data.optionImages?.slice(0, (options || []).length) || null
+        : null;
+
       return {
         tempId: node.id,
         parentTempId,
         label: node.data.label,
         question: node.data.question,
+        questionImage: node.data.questionImage || null,
         options,
+        optionImages,
         correctAnswer: node.data.correctAnswer,
+        answerImage: node.data.answerImage || null,
         hint: node.data.hint,
+        hintImage: node.data.hintImage || null,
         points: Number(node.data.points) || 1,
         order: siblings.indexOf(node.id) >= 0 ? siblings.indexOf(node.id) : 0,
       };
@@ -584,8 +671,12 @@ export default function CreateExam() {
 
                 {selectedNode ? (
                   <Stack spacing={1.5}>
+                    <Typography variant="caption" color="text.secondary" sx={{ bgcolor: '#f5f0e6', px: 1.5, py: 0.7, borderRadius: 1, fontSize: '0.72rem' }}>
+                      💡 Hỗ trợ công thức Toán: dùng <strong>$...$</strong> cho inline, <strong>$$...$$</strong> cho block. VD: <code>$x^2 + y^2 = z^2$</code>
+                    </Typography>
                     <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
                     <TextField fullWidth multiline minRows={3} size="small" label="Câu hỏi" value={form.question} onChange={(e) => updateForm('question', e.target.value)} />
+                    <ImageUploadField label="câu hỏi" value={form.questionImage} onChange={(url) => updateForm('questionImage', url)} disabled={saving} />
                     <FormControlLabel
                       control={
                         <Switch
@@ -599,14 +690,25 @@ export default function CreateExam() {
                     {form.isMultiChoice && (
                       <Stack spacing={1}>
                         {['A', 'B', 'C', 'D'].map((label, index) => (
-                          <TextField
-                            key={label}
-                            fullWidth
-                            size="small"
-                            label={`Phương án ${label}`}
-                            value={form.options[index]}
-                            onChange={(e) => updateOption(index, e.target.value)}
-                          />
+                          <Box key={label}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label={`Phương án ${label}`}
+                              value={form.options[index]}
+                              onChange={(e) => updateOption(index, e.target.value)}
+                            />
+                            <ImageUploadField
+                              label={`phương án ${label}`}
+                              value={form.optionImages?.[index] || null}
+                              onChange={(url) => {
+                                const imgs = [...(form.optionImages || [null, null, null, null])];
+                                imgs[index] = url;
+                                updateForm('optionImages', imgs);
+                              }}
+                              disabled={saving}
+                            />
+                          </Box>
                         ))}
                       </Stack>
                     )}
@@ -625,7 +727,9 @@ export default function CreateExam() {
                         )
                       }
                     />
+                    <ImageUploadField label="đáp án" value={form.answerImage} onChange={(url) => updateForm('answerImage', url)} disabled={saving} />
                     <TextField fullWidth size="small" label="Gợi ý" value={form.hint} onChange={(e) => updateForm('hint', e.target.value)} />
+                    <ImageUploadField label="gợi ý" value={form.hintImage} onChange={(url) => updateForm('hintImage', url)} disabled={saving} />
                     <TextField fullWidth size="small" type="number" label="Điểm" value={form.points} onChange={(e) => updateForm('points', Math.max(1, Number(e.target.value) || 1))} />
                   </Stack>
                 ) : (
@@ -649,9 +753,13 @@ export default function CreateExam() {
                   setForm({
                     label: node.data.label || '',
                     question: node.data.question || '',
+                    questionImage: node.data.questionImage || null,
                     options: node.data.options || ['', '', '', ''],
+                    optionImages: node.data.optionImages || [null, null, null, null],
                     correctAnswer: node.data.correctAnswer || '',
+                    answerImage: node.data.answerImage || null,
                     hint: node.data.hint || '',
+                    hintImage: node.data.hintImage || null,
                     points: node.data.points || 1,
                     isMultiChoice: node.data.isMultiChoice || false,
                   });
