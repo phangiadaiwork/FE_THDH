@@ -62,5 +62,8 @@ function renderMath(text) {
   // Convert newlines to <br> for multi-line text
   result = result.replace(/\n/g, '<br/>');
 
+  // Third pass: unescape \$ to $
+  result = result.replace(/\\\$/g, '$');
+
   return result;
 }

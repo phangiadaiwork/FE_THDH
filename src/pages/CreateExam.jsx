@@ -704,7 +704,7 @@ export default function CreateExam() {
                 {selectedNode ? (
                   <Stack spacing={1.5}>
                     <Typography variant="caption" color="text.secondary" sx={{ bgcolor: '#f5f0e6', px: 1.5, py: 0.7, borderRadius: 1, fontSize: '0.72rem' }}>
-                      💡 Hỗ trợ công thức Toán: dùng <strong>$...$</strong> cho inline, <strong>$$...$$</strong> cho block. VD: <code>$x^2 + y^2 = z^2$</code>
+                      Hỗ trợ Toán: dùng <strong>$...$</strong> (inline), <strong>$$...$$</strong> (block). Gõ <strong>\$</strong> để hiện dấu đô-la thường. VD: <code>$x^2 + y^2$</code>, <code>Giá 5\$</code>
                     </Typography>
                     <Box>
                       <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
