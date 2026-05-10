@@ -104,6 +104,11 @@ function getBulkErrorsMessage(responseData) {
     .join('; ');
 }
 
+function stripHtml(html) {
+  if (!html) return '';
+  return html.replace(/<[^>]*>?/gm, '');
+}
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -237,7 +242,7 @@ export default function TeacherDashboard() {
         const query = searchQuery.toLowerCase();
         return (
           lesson.lessonTitle.toLowerCase().includes(query) ||
-          (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+          (lesson.theoryContent && stripHtml(lesson.theoryContent).toLowerCase().includes(query))
         );
       }
       return true;
@@ -581,8 +586,8 @@ export default function TeacherDashboard() {
                         {lesson.lessonTitle}
                       </Typography>
                       <Typography color="text.secondary" sx={{ mt: 1, minHeight: 48 }}>
-                        {lesson.theoryContent?.slice(0, 120) || 'Chưa có phần lý thuyết.'}
-                        {lesson.theoryContent?.length > 120 ? '...' : ''}
+                        {stripHtml(lesson.theoryContent)?.slice(0, 120) || 'Chưa có phần lý thuyết.'}
+                        {stripHtml(lesson.theoryContent)?.length > 120 ? '...' : ''}
                       </Typography>
 
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>

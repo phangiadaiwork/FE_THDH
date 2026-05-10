@@ -67,6 +67,11 @@ function getActionLabel(status, attemptCount) {
   return 'Bắt đầu';
 }
 
+function stripHtml(html) {
+  if (!html) return '';
+  return html.replace(/<[^>]*>?/gm, '');
+}
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
@@ -171,7 +176,7 @@ export default function StudentDashboard() {
           const query = searchQuery.toLowerCase();
           return (
             lesson.lessonTitle.toLowerCase().includes(query) ||
-            (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+            (lesson.theoryContent && stripHtml(lesson.theoryContent).toLowerCase().includes(query))
           );
         }
         return true;
@@ -182,7 +187,7 @@ export default function StudentDashboard() {
         const query = searchQuery.toLowerCase();
         return (
           lesson.lessonTitle.toLowerCase().includes(query) ||
-          (lesson.theoryContent && lesson.theoryContent.toLowerCase().includes(query))
+          (lesson.theoryContent && stripHtml(lesson.theoryContent).toLowerCase().includes(query))
         );
       }
       return true;
