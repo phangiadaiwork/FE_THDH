@@ -47,15 +47,16 @@ function renderMath(text) {
   });
 
   // Second pass: replace $...$ (inline math), but not escaped \$
-  result = result.replace(/(?<![\\$])\$([^$\n]+?)\$/g, (_match, tex) => {
+  result = result.replace(/(^|[^\\])\$([^$\n]+?)(?<!\\)\$/g, (_match, prefix, tex) => {
     try {
-      return katex.renderToString(tex.trim(), {
+      const rendered = katex.renderToString(tex.trim(), {
         displayMode: false,
         throwOnError: false,
         strict: false,
       });
+      return prefix + rendered;
     } catch {
-      return `<span style="color:red">[Math Error]</span>`;
+      return prefix + `<span style="color:red">[Math Error]</span>`;
     }
   });
 
