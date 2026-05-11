@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
+import { Box } from '@mui/material';
+
 /**
  * MathText — renders text with inline LaTeX support.
  *
@@ -13,20 +15,24 @@ import 'katex/dist/katex.min.css';
  *   "Tính $x^2 + y^2$ khi $x = 3$"
  *   "Công thức: $$\\frac{a}{b}$$"
  */
-export default function MathText({ children, sx, variant, component: Component = 'span', ...rest }) {
+export default function MathText({ children, sx, variant, component = 'span', ...rest }) {
   const html = useMemo(() => {
     if (!children || typeof children !== 'string') return children || '';
     return renderMath(children);
   }, [children]);
 
   if (!children || typeof children !== 'string') {
-    return <Component {...rest}>{children}</Component>;
+    return <Box component={component} sx={sx} {...rest}>{children}</Box>;
   }
 
   return (
-    <Component
+    <Box
+      component={component}
       dangerouslySetInnerHTML={{ __html: html }}
-      style={sx}
+      sx={{
+        '& img': { maxWidth: '100%', height: 'auto', display: 'block', my: 1, borderRadius: 1 },
+        ...sx
+      }}
       {...rest}
     />
   );

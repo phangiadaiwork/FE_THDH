@@ -9,13 +9,12 @@ window.katex = katex;
 
 export default function RichTextEditor({ label, value, onChange, placeholder }) {
   const quillRef = useRef(null);
-  // Modules for ReactQuill
   const modules = useMemo(() => ({
     formula: true,
     toolbar: [
       ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
       [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
-      ['formula'],                                      // add formula button
+      ['formula', 'image'],                             // add formula and image button
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
       ['clean']                                         // remove formatting button
@@ -25,7 +24,7 @@ export default function RichTextEditor({ label, value, onChange, placeholder }) 
   const formats = [
     'bold', 'italic', 'underline', 'strike',
     'color', 'background',
-    'formula',
+    'formula', 'image',
     'list', 'bullet',
     'script'
   ];
