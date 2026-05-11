@@ -39,7 +39,7 @@ export default function RichTextEditor({ label, value, onChange, placeholder }) 
         if (url) {
           const quill = quillRef.current.getEditor();
           const range = quill.getSelection(true);
-          const fullUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${url}`;
+          const fullUrl = url.startsWith('http') || url.startsWith('data:') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${url}`;
           quill.insertEmbed(range.index, 'image', fullUrl);
           quill.setSelection(range.index + 1);
         }

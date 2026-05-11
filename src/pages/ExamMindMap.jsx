@@ -48,10 +48,13 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 function NodeImage({ src, alt, sx }) {
   if (!src) return null;
+  const imageSrc = src.startsWith('http') || src.startsWith('data:') 
+    ? src 
+    : `${API_BASE}${src}`;
   return (
     <Box
       component="img"
-      src={`${API_BASE}${src}`}
+      src={imageSrc}
       alt={alt || ''}
       sx={{
         maxWidth: '100%',

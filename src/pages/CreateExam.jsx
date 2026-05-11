@@ -162,7 +162,7 @@ function ImageUploadField({ label, value, onChange, disabled }) {
         <Box sx={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
           <Box
             component="img"
-            src={`${API_BASE}${value}`}
+            src={value.startsWith('http') || value.startsWith('data:') ? value : `${API_BASE}${value}`}
             alt={label}
             sx={{ maxWidth: '100%', maxHeight: 160, borderRadius: 2, border: '1px solid #e0e0e0', objectFit: 'contain', display: 'block' }}
           />
@@ -703,7 +703,7 @@ export default function CreateExam() {
                       </Button>
                       {theoryPdf && (
                         <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                          Đã đính kèm: <a href={theoryPdf.startsWith('http') ? theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${theoryPdf}`} target="_blank" rel="noreferrer">Xem PDF</a>
+                          Đã đính kèm: <a href={theoryPdf.startsWith('http') || theoryPdf.startsWith('data:') ? theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${theoryPdf}`} target="_blank" rel="noreferrer">Xem PDF</a>
                           <Button size="small" color="error" onClick={() => setTheoryPdf(null)} sx={{ ml: 2 }}>Xóa</Button>
                         </Typography>
                       )}
