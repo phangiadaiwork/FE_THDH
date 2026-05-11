@@ -715,12 +715,10 @@ export default function CreateExam() {
                         {['A', 'B', 'C', 'D'].map((label, index) => (
                           <Box key={label}>
                             <Box>
-                              <TextField
-                                fullWidth
-                                size="small"
+                              <RichTextEditor
                                 label={`Phương án ${label}`}
                                 value={form.options[index]}
-                                onChange={(e) => updateOption(index, e.target.value)}
+                                onChange={(val) => updateOption(index, val)}
                               />
                             </Box>
                             <ImageUploadField
