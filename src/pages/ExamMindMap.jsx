@@ -22,7 +22,6 @@ import {
   Alert,
   Chip,
   CircularProgress,
-  LinearProgress,
   Paper,
   Tooltip,
   IconButton,
@@ -799,14 +798,32 @@ export default function ExamMindMap() {
       )}
       </Paper>
 
-      <LinearProgress
-        variant="determinate"
-        value={progress}
-        sx={{ height: { xs: 4, sm: 5 } }}
-        color={progress === 100 ? 'success' : 'primary'}
-      />
-
       <Box sx={{ flex: 1, position: 'relative' }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            zIndex: 10,
+            bgcolor: 'background.paper',
+            p: 1,
+            borderRadius: 2,
+            boxShadow: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <CircularProgress 
+            variant="determinate" 
+            value={progress} 
+            size={24} 
+            color={progress === 100 ? 'success' : 'primary'} 
+          />
+          <Typography variant="body2" fontWeight="bold">
+            {Math.round(progress)}%
+          </Typography>
+        </Box>
         <ReactFlow
           nodes={displayNodes}
           edges={rfEdges}
