@@ -95,11 +95,12 @@ export default function RichTextEditor({ label, value, onChange, placeholder }) 
           theme="snow"
           value={value || ''}
           onChange={(newVal, delta, source, editor) => {
-            if (source === 'user' && onChange && newVal !== value) {
-              onChange(newVal);
-            } else if (source === 'api' && onChange && newVal !== value && !value) {
-              // Sometimes quill fires api event on mount with <p><br></p>
-              onChange(newVal);
+            if (onChange) {
+               // Quill's programmatic edits (like our formula auto-convert) show up as 'api' source,
+               // so we need to propagate them. But we shouldn't infinitely loop on mount.
+               if (source === 'user' || (source === 'api' && newVal !== '<p><br></p>')) {
+                 onChange(newVal);
+               }
             }
           }}
           modules={modules}
