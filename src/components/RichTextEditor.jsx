@@ -94,7 +94,14 @@ export default function RichTextEditor({ label, value, onChange, placeholder }) 
           ref={quillRef}
           theme="snow"
           value={value || ''}
-          onChange={onChange}
+          onChange={(newVal, delta, source, editor) => {
+            if (source === 'user' && onChange && newVal !== value) {
+              onChange(newVal);
+            } else if (source === 'api' && onChange && newVal !== value && !value) {
+              // Sometimes quill fires api event on mount with <p><br></p>
+              onChange(newVal);
+            }
+          }}
           modules={modules}
           formats={formats}
           placeholder={placeholder || 'Nhập nội dung...'}

@@ -210,6 +210,7 @@ export default function CreateExam() {
   const [lessonTitle, setLessonTitle] = useState('');
   const [exerciseTitle, setExerciseTitle] = useState('Bài tập');
   const [theoryContent, setTheoryContent] = useState('');
+  const [theoryPdf, setTheoryPdf] = useState(null);
 
   const fileInputRef = useRef(null);
   const idCounter = useRef(1);
@@ -301,6 +302,7 @@ export default function CreateExam() {
 
         setExerciseTitle(data.exerciseTitle || 'Bài tập');
         setTheoryContent(data.theoryContent || '');
+        setTheoryPdf(data.theoryPdf || null);
 
         if (data.nodes && data.nodes.length > 0) {
           layoutAndSetNodes(data.nodes);
@@ -471,6 +473,7 @@ export default function CreateExam() {
         lessonTitle: `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`,
         exerciseTitle: exerciseTitle.trim() || 'Bài tập',
         theoryContent,
+        theoryPdf,
         title: `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`,
         nodes,
       };
@@ -672,6 +675,38 @@ export default function CreateExam() {
                       value={theoryContent}
                       onChange={(val) => setTheoryContent(val)}
                     />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ mt: 1 }}>
+                      <Button variant="outlined" component="label">
+                        Tải lên file PDF lý thuyết
+                        <input 
+                          type="file" 
+                          hidden 
+                          accept="application/pdf" 
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            try {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              const { data } = await api.post('/api/upload', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                              });
+                              setTheoryPdf(data.url);
+                            } catch (err) {
+                              setSaveError('Upload PDF thất bại');
+                            }
+                          }} 
+                        />
+                      </Button>
+                      {theoryPdf && (
+                        <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                          Đã đính kèm: <a href={theoryPdf} target="_blank" rel="noreferrer">Xem PDF</a>
+                          <Button size="small" color="error" onClick={() => setTheoryPdf(null)} sx={{ ml: 2 }}>Xóa</Button>
+                        </Typography>
+                      )}
+                    </Box>
                   </Grid>
                 </Grid>
               </Paper>

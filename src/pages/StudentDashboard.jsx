@@ -26,6 +26,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import Navbar from '../components/Navbar';
 import MathText from '../components/MathText';
 import api from '../api';
@@ -484,6 +485,18 @@ export default function StudentDashboard() {
                         <Typography component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5 }}>
                           <MathText component="div">{selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}</MathText>
                         </Typography>
+
+                        {selectedLesson.theoryPdf && (
+                          <Box sx={{ mt: 2, height: { xs: '400px', md: '600px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+                            <iframe 
+                              src={selectedLesson.theoryPdf} 
+                              width="100%" 
+                              height="100%" 
+                              style={{ border: 'none' }}
+                              title="Tài liệu lý thuyết (PDF)"
+                            />
+                          </Box>
+                        )}
 
                         <Divider sx={{ my: 1.5 }} />
 

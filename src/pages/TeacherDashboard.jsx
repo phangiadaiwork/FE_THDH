@@ -41,6 +41,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import EditIcon from '@mui/icons-material/Edit';
 import Navbar from '../components/Navbar';
 import api from '../api';
@@ -589,6 +590,12 @@ export default function TeacherDashboard() {
                         {stripHtml(lesson.theoryContent)?.slice(0, 120) || 'Chưa có phần lý thuyết.'}
                         {stripHtml(lesson.theoryContent)?.length > 120 ? '...' : ''}
                       </Typography>
+
+                      {lesson.theoryPdf && (
+                        <Box sx={{ mt: 1 }}>
+                          <Chip icon={<PictureAsPdfIcon fontSize="small" />} label="Có file PDF đính kèm" size="small" variant="outlined" color="primary" />
+                        </Box>
+                      )}
 
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
                         <Chip icon={<AccountTreeIcon />} label={`${lesson.nodeCount} node`} size="small" variant="outlined" />
