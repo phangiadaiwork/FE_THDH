@@ -394,9 +394,14 @@ export default function CreateExam() {
       return;
     }
 
-    const invalidNodes = rfNodes.filter((node) => !node.data.question || !node.data.correctAnswer);
+    const invalidNodes = rfNodes.filter((node) => {
+      const hasQText = node.data.question && node.data.question.replace(/<[^>]*>/g, '').trim() !== '';
+      const hasQImg = !!node.data.questionImage;
+      const isQuestionNode = hasQText || hasQImg;
+      return isQuestionNode && !node.data.correctAnswer;
+    });
     if (invalidNodes.length > 0) {
-      setSaveError('Tất cả node cần có câu hỏi và đáp án đúng.');
+      setSaveError('Các node có câu hỏi cần có đáp án đúng.');
       return;
     }
 

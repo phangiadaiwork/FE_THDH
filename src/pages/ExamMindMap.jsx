@@ -74,6 +74,7 @@ const STATUS_STYLE = {
   current:   { bg: '#fff8e1', border: '#f9a825', shadow: '0 4px 14px rgba(249,168,37,0.5)', opacity: 1, cursor: 'pointer' },
   correct:   { bg: '#e8f5e9', border: '#43a047', shadow: '0 2px 8px rgba(67,160,71,0.3)', opacity: 1, cursor: 'pointer' },
   incorrect: { bg: '#fce4ec', border: '#e53935', shadow: '0 2px 8px rgba(229,57,53,0.3)', opacity: 1, cursor: 'pointer' },
+  info:      { bg: '#e1f5fe', border: '#4fc3f7', shadow: '0 2px 8px rgba(79,195,247,0.3)', opacity: 1, cursor: 'default' },
 };
 
 // ─── Custom Node (có responsive) ────────────────────────────────────────────
@@ -107,14 +108,16 @@ function MindMapNode({ data }) {
       >
         {data.label}
       </Typography>
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        display="block"
-        sx={{ fontSize: isMobile ? '0.6rem' : '0.7rem' }}
-      >
-        {data.points} điểm
-      </Typography>
+      {data.status !== 'info' && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ fontSize: isMobile ? '0.6rem' : '0.7rem' }}
+        >
+          {data.points} điểm
+        </Typography>
+      )}
       {data.status === 'correct' && <CheckCircleIcon sx={{ color: '#43a047', fontSize: isMobile ? 16 : 18, mt: 0.3 }} />}
       {data.status === 'incorrect' && <CancelIcon sx={{ color: '#e53935', fontSize: isMobile ? 16 : 18, mt: 0.3 }} />}
       {data.status === 'current' && (
@@ -159,7 +162,14 @@ function calcPositions(root) {
 
 function getDFSOrder(root) {
   const order = [];
-  function dfs(n) { order.push(n.id); n.children.forEach(dfs); }
+  function dfs(n) {
+    const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+    const hasQImg = !!n.questionImage;
+    if (hasQText || hasQImg) {
+      order.push(n.id);
+    }
+    n.children.forEach(dfs);
+  }
   if (root) dfs(root);
   return order;
 }
@@ -335,7 +345,11 @@ export default function ExamMindMap() {
       setDfsOrder(order);
       setTotalNodes(order.length);
       const statuses = {};
-      flatNodes.forEach((n) => { statuses[n.id] = 'locked'; });
+      flatNodes.forEach((n) => {
+        const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQImg = !!n.questionImage;
+        statuses[n.id] = (hasQText || hasQImg) ? 'locked' : 'info';
+      });
       if (order.length > 0) statuses[order[0]] = 'current';
       scoreRef.current = 0;
       setScoreDisplay(0);
@@ -373,7 +387,11 @@ export default function ExamMindMap() {
 
       const remaining = order.filter((nid) => !answeredIds.has(nid));
       const statuses = {};
-      flatNodes.forEach((n) => { statuses[n.id] = 'locked'; });
+      flatNodes.forEach((n) => {
+        const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQImg = !!n.questionImage;
+        statuses[n.id] = (hasQText || hasQImg) ? 'locked' : 'info';
+      });
       nodeAnswers.forEach((na) => {
         statuses[na.nodeId] = na.isCorrect ? 'correct' : 'incorrect';
       });
@@ -407,7 +425,11 @@ export default function ExamMindMap() {
       setTotalNodes(order.length);
 
       const statuses = {};
-      flatNodes.forEach((node) => { statuses[node.id] = 'locked'; });
+      flatNodes.forEach((node) => {
+        const hasQText = node.question && node.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQImg = !!node.questionImage;
+        statuses[node.id] = (hasQText || hasQImg) ? 'locked' : 'info';
+      });
 
       const restoredAnswerMap = {};
       nodeAnswers.forEach((nodeAnswer) => {
@@ -561,7 +583,7 @@ export default function ExamMindMap() {
     (_evt, node) => {
       const nid = parseInt(node.id);
       const status = nodeStatuses[nid];
-      if (status === 'locked') return;
+      if (status === 'locked' || status === 'info') return;
       if (finished) {
         setDialogNodeId(nid);
         return;
