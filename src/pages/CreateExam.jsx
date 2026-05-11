@@ -80,12 +80,29 @@ const nodeTypes = { editorNode: EditorNode };
 function stripOptionPrefix(options) {
   if (!Array.isArray(options)) return ['', '', '', ''];
   const stripped = options.map((opt) => {
-    if (typeof opt === 'string') return opt.replace(/^[A-D]\. ?/, '');
+    if (typeof opt === 'string') {
+      let value = opt.trim();
+      value = value.replace(/^[A-D]\.\s*/i, '');
+      value = value.replace(/^<p>\s*([A-D])\.\s*/i, '<p>');
+      return value;
+    }
     return opt || '';
   });
   // Pad to 4 options
   while (stripped.length < 4) stripped.push('');
   return stripped;
+}
+
+function stripHtmlTags(html = '') {
+  return String(html).replace(/<[^>]*>/g, ' ');
+}
+
+function isMeaningfulRichText(html = '') {
+  const text = stripHtmlTags(html)
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 0;
 }
 
 const EMPTY_FORM = {
@@ -419,9 +436,7 @@ export default function CreateExam() {
       const parentTempId = parentMap[node.id] || null;
       const siblings = parentTempId ? childMap[parentTempId] || [] : [];
       const options = node.data.isMultiChoice
-        ? node.data.options
-            .filter((option) => option.trim())
-            .map((option, index) => `${['A', 'B', 'C', 'D'][index]}. ${option}`)
+        ? node.data.options.filter((option) => isMeaningfulRichText(option))
         : null;
 
       const optionImages = node.data.isMultiChoice

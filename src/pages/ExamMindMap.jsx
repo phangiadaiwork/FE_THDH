@@ -173,6 +173,36 @@ function getDFSOrder(root) {
   return order;
 }
 
+const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+
+function stripHtmlTags(value = '') {
+  return String(value).replace(/<[^>]*>/g, ' ');
+}
+
+function hasMeaningfulRichText(value = '') {
+  const text = stripHtmlTags(value)
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 0;
+}
+
+function stripOptionPrefixForDisplay(option, letter) {
+  if (typeof option !== 'string') return option || '';
+  let value = option.trim();
+  value = value.replace(new RegExp(`^${letter}\\.\\s*`, 'i'), '');
+  value = value.replace(new RegExp(`^<p>\\s*${letter}\\.\\s*`, 'i'), '<p>');
+  return value;
+}
+
+function getCorrectOptionText(options = [], correctAnswer = '') {
+  const idx = OPTION_LETTERS.indexOf(String(correctAnswer || '').toUpperCase());
+  if (idx < 0 || idx >= options.length) return correctAnswer;
+  const letter = OPTION_LETTERS[idx];
+  const content = stripOptionPrefixForDisplay(options[idx], letter);
+  return `${letter}. ${content}`;
+}
+
 // ─── OptionGrid dùng chung (responsive bên trong) ──────────────────────────
 const OptionGrid = memo(({ options, optionImages, correctAnswer, chosenAnswer, onSelect, readOnly }) => {
   const handleClick = (letter) => {
@@ -189,7 +219,9 @@ const OptionGrid = memo(({ options, optionImages, correctAnswer, chosenAnswer, o
       }}
     >
       {options.map((opt, i) => {
-        const letter = opt.charAt(0);
+        if (!hasMeaningfulRichText(opt)) return null;
+        const letter = OPTION_LETTERS[i] || String(i + 1);
+        const optionContent = stripOptionPrefixForDisplay(opt, letter);
         const isChosen = letter === chosenAnswer;
         const isCorrectAnswer = letter === correctAnswer;
         const optImage = optionImages?.[i] || null;
@@ -241,7 +273,7 @@ const OptionGrid = memo(({ options, optionImages, correctAnswer, chosenAnswer, o
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
               <Typography variant="body2" component="span" sx={{ flex: 1, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
-                <MathText>{opt}</MathText>
+                <MathText>{`${letter}. ${optionContent}`}</MathText>
               </Typography>
               {icon}
             </Box>
@@ -490,7 +522,7 @@ export default function ExamMindMap() {
   const dialogStatus = dialogNodeId ? nodeStatuses[dialogNodeId] : null;
   const isReviewMode = dialogStatus === 'correct' || dialogStatus === 'incorrect';
   const isAnswerMode = dialogStatus === 'current';
-  const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.length > 0;
+  const hasOptions = Array.isArray(dialogNode?.options) && dialogNode.options.some((opt) => hasMeaningfulRichText(opt));
   const reviewData = dialogNodeId ? nodeAnswerMap[dialogNodeId] : null;
 
   const submitAnswer = useCallback(
@@ -1009,8 +1041,7 @@ export default function ExamMindMap() {
                     <strong>
                       <MathText>
                         {hasOptions
-                          ? dialogNode.options.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
-                            dialogNode.correctAnswer
+                          ? getCorrectOptionText(dialogNode.options, dialogNode.correctAnswer)
                           : dialogNode?.correctAnswer}
                       </MathText>
                     </strong>
@@ -1063,8 +1094,7 @@ export default function ExamMindMap() {
                     <strong>
                       <MathText>
                         {hasOptions
-                          ? dialogNode.options?.find((o) => o.startsWith(dialogNode.correctAnswer)) ||
-                            dialogNode.correctAnswer
+                          ? getCorrectOptionText(dialogNode.options, dialogNode.correctAnswer)
                           : dialogNode?.correctAnswer}
                       </MathText>
                     </strong>
