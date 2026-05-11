@@ -4,21 +4,64 @@ import 'react-quill/dist/quill.snow.css';
 import { Box, Typography } from '@mui/material';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import api from '../api';
 
 window.katex = katex;
 
 export default function RichTextEditor({ label, value, onChange, placeholder }) {
   const quillRef = useRef(null);
+  
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const { data } = await api.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return data.url;
+    } catch (error) {
+      console.error('Lỗi tải ảnh:', error);
+      alert('Tải ảnh thất bại!');
+      return null;
+    }
+  };
+
+  const imageHandler = () => {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (file) {
+        const url = await uploadImage(file);
+        if (url) {
+          const quill = quillRef.current.getEditor();
+          const range = quill.getSelection(true);
+          const fullUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${url}`;
+          quill.insertEmbed(range.index, 'image', fullUrl);
+          quill.setSelection(range.index + 1);
+        }
+      }
+    };
+  };
+
   const modules = useMemo(() => ({
     formula: true,
-    toolbar: [
-      ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
-      [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
-      ['formula', 'image'],                             // add formula and image button
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
-      ['clean']                                         // remove formatting button
-    ],
+    toolbar: {
+      container: [
+        ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+        [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+        ['formula', 'image'],                             // add formula and image button
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+        ['clean']                                         // remove formatting button
+      ],
+      handlers: {
+        image: imageHandler
+      }
+    }
   }), []);
 
   const formats = [

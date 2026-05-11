@@ -180,6 +180,7 @@ function stripHtmlTags(value = '') {
 }
 
 function hasMeaningfulRichText(value = '') {
+  if (value.includes('<img')) return true;
   const text = stripHtmlTags(value)
     .replace(/&nbsp;/gi, ' ')
     .replace(/\s+/g, ' ')
@@ -271,9 +272,12 @@ const OptionGrid = memo(({ options, optionImages, correctAnswer, chosenAnswer, o
               flexDirection: optImage ? 'column' : 'row',
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-              <Typography variant="body2" component="span" sx={{ flex: 1, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
-                <MathText>{`${letter}. ${optionContent}`}</MathText>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
+              <Typography variant="body2" component="div" sx={{ fontWeight: 'bold', mt: 0.2 }}>
+                {letter}.
+              </Typography>
+              <Typography variant="body2" component="div" sx={{ flex: 1, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
+                <MathText component="div">{optionContent}</MathText>
               </Typography>
               {icon}
             </Box>
