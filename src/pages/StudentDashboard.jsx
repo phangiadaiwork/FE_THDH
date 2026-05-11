@@ -465,7 +465,11 @@ export default function StudentDashboard() {
                         ← Quay lại
                       </Button>
                     )}
-                    <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, lg: 3 }}>
+                    <Stack
+                      direction={{ xs: 'column', lg: 'row' }}
+                      spacing={{ xs: 2, lg: 3 }}
+                      alignItems={{ lg: 'flex-start' }}
+                    >
                       <Box sx={{ flex: 1 }}>
                         <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1.5 }}>
                           <AutoStoriesIcon sx={{ color: '#8c5c22', mt: 0.5, flexShrink: 0, fontSize: { xs: '1.5rem', md: '1.75rem' } }} />
@@ -523,6 +527,9 @@ export default function StudentDashboard() {
                           bgcolor: '#fff',
                           border: '1px solid #efe2ce',
                           flexShrink: 0,
+                          alignSelf: { lg: 'flex-start' },
+                          position: { lg: 'sticky' },
+                          top: { lg: 0 },
                         }}
                       >
                         <Typography variant="body2" fontWeight={800} sx={{ color: '#5d3c15', mb: 1, fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
