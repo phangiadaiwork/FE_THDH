@@ -162,7 +162,7 @@ function calcPositions(root) {
 function getDFSOrder(root) {
   const order = [];
   function dfs(n) {
-    const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+    const hasQText = hasMeaningfulRichText(n.question);
     const hasQImg = !!n.questionImage;
     if (hasQText || hasQImg) {
       order.push(n.id);
@@ -377,7 +377,7 @@ export default function ExamMindMap() {
       setTotalNodes(order.length);
       const statuses = {};
       flatNodes.forEach((n) => {
-        const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQText = hasMeaningfulRichText(n.question);
         const hasQImg = !!n.questionImage;
         statuses[n.id] = (hasQText || hasQImg) ? 'locked' : 'info';
       });
@@ -419,7 +419,7 @@ export default function ExamMindMap() {
       const remaining = order.filter((nid) => !answeredIds.has(nid));
       const statuses = {};
       flatNodes.forEach((n) => {
-        const hasQText = n.question && n.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQText = hasMeaningfulRichText(n.question);
         const hasQImg = !!n.questionImage;
         statuses[n.id] = (hasQText || hasQImg) ? 'locked' : 'info';
       });
@@ -457,7 +457,7 @@ export default function ExamMindMap() {
 
       const statuses = {};
       flatNodes.forEach((node) => {
-        const hasQText = node.question && node.question.replace(/<[^>]*>/g, '').trim() !== '';
+        const hasQText = hasMeaningfulRichText(node.question);
         const hasQImg = !!node.questionImage;
         statuses[node.id] = (hasQText || hasQImg) ? 'locked' : 'info';
       });

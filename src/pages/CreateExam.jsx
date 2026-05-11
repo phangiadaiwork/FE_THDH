@@ -99,6 +99,7 @@ function stripHtmlTags(html = '') {
 
 function isMeaningfulRichText(html = '') {
   const text = stripHtmlTags(html)
+    .replace(/<br\s*\/?>/gi, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -412,7 +413,7 @@ export default function CreateExam() {
     }
 
     const invalidNodes = rfNodes.filter((node) => {
-      const hasQText = node.data.question && node.data.question.replace(/<[^>]*>/g, '').trim() !== '';
+      const hasQText = isMeaningfulRichText(node.data.question);
       const hasQImg = !!node.data.questionImage;
       const isQuestionNode = hasQText || hasQImg;
       return isQuestionNode && !node.data.correctAnswer;
