@@ -98,6 +98,7 @@ function stripHtmlTags(html = '') {
 }
 
 function isMeaningfulRichText(html = '') {
+  if (html.includes('<img')) return true;
   const text = stripHtmlTags(html)
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/&nbsp;/gi, ' ')
