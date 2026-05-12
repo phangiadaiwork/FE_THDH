@@ -374,6 +374,7 @@ export default function StudentDashboard() {
                               : '#fff',
                             cursor: 'pointer',
                             boxShadow: 'none',
+                            flexShrink: 0,
                           }}
                         >
                           <CardContent sx={{ '&:last-child': { pb: 1.5 }, p: 1.5 }}>
