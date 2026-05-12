@@ -325,7 +325,7 @@ export default function StudentDashboard() {
 
             <Grid container spacing={3}>
               <Grid item xs={12} lg={4} sx={{ display: { xs: mobileViewDetail ? 'none' : 'block', lg: 'block' } }}>
-                <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { xs: '500px', lg: 'calc(100vh - 100px)' }, position: { lg: 'sticky' }, top: { lg: 24 }, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <Paper sx={{ p: 2, borderRadius: 4, bgcolor: '#fff', border: '1px solid #efe2ce', height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, maxHeight: { xs: '600px', lg: 'none' }, position: { lg: 'sticky' }, top: { lg: 24 }, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" fontWeight={800} sx={{ color: '#5d3c15', mb: 0.5, fontSize: { xs: '0.95rem', md: '1.05rem' } }}>
                     Danh sách bài học
                   </Typography>
@@ -354,7 +354,7 @@ export default function StudentDashboard() {
                     />
                   </Box>
 
-                  <Stack spacing={1} sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
+                  <Stack spacing={1} sx={{ flex: 1, overflowY: 'auto', pr: 1, WebkitOverflowScrolling: 'touch' }}>
                     {visibleLessons.map((lesson) => {
                       const status = lesson.attemptSummary?.status || 'NOT_STARTED';
                       const meta = STATUS_META[status];
@@ -483,7 +483,7 @@ export default function StudentDashboard() {
                         </Typography>
 
                         {selectedLesson.theoryPdf && (
-                          <Box sx={{ mt: 2, height: { xs: '80vh', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+                          <Box sx={{ mt: 2, height: { xs: '500px', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid #e0e0e0' }}>
                             <iframe 
                               src={selectedLesson.theoryPdf.startsWith('http') || selectedLesson.theoryPdf.startsWith('data:') ? selectedLesson.theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${selectedLesson.theoryPdf}`} 
                               width="100%" 
