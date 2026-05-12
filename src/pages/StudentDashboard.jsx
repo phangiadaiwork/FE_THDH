@@ -484,7 +484,7 @@ export default function StudentDashboard() {
                         </Typography>
 
                         {selectedLesson.theoryPdf && (
-                          <Box sx={{ mt: 2, height: { xs: '500px', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid #e0e0e0' }}>
+                          <Box sx={{ mt: 2, height: { xs: '80vh', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
                             <iframe 
                               src={selectedLesson.theoryPdf.startsWith('http') || selectedLesson.theoryPdf.startsWith('data:') ? selectedLesson.theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${selectedLesson.theoryPdf}`} 
                               width="100%" 
