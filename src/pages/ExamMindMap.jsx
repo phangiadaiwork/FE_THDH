@@ -123,7 +123,7 @@ function MindMapNode({ data }) {
       {data.status === 'correct' && <CheckCircleIcon sx={{ color: '#43a047', fontSize: isMobile ? 16 : 18, mt: 0.3 }} />}
       {data.status === 'incorrect' && <CancelIcon sx={{ color: '#e53935', fontSize: isMobile ? 16 : 18, mt: 0.3 }} />}
       {data.status === 'current' && (
-        <Chip label="▶ Nhấn để trả lời" size="small" color="warning" sx={{ mt: 0.3, height: 20, fontSize: 10 }} />
+        <Chip label="Nhấn để trả lời" size="small" color="warning" sx={{ mt: 0.3, height: 20, fontSize: 10 }} />
       )}
       {data.status === 'locked' && <LockIcon sx={{ color: '#bdbdbd', fontSize: isMobile ? 14 : 16, mt: 0.3 }} />}
       <Handle type="source" position={Position.Bottom} style={{ background: s.border }} />
