@@ -27,11 +27,30 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
 import Navbar from '../components/Navbar';
 import MathText from '../components/MathText';
 import api from '../api';
 
 const GRADE_OPTIONS = ['10', '11', '12'];
+
+function extractYouTubeId(url = '') {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  const patterns = [
+    /(?:youtube\.com\/watch\?[^#]*?\bv=)([A-Za-z0-9_-]{11})/,
+    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = trimmed.match(re);
+    if (m) return m[1];
+  }
+  return '';
+}
 
 const STATUS_META = {
   NOT_STARTED: { label: 'Chưa làm', color: 'default' },
@@ -485,13 +504,48 @@ export default function StudentDashboard() {
 
                         {selectedLesson.theoryPdf && (
                           <Box sx={{ mt: 2, height: { xs: '80vh', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
-                            <iframe 
-                              src={selectedLesson.theoryPdf.startsWith('http') || selectedLesson.theoryPdf.startsWith('data:') ? selectedLesson.theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${selectedLesson.theoryPdf}`} 
-                              width="100%" 
-                              height="100%" 
+                            <iframe
+                              src={selectedLesson.theoryPdf.startsWith('http') || selectedLesson.theoryPdf.startsWith('data:') ? selectedLesson.theoryPdf : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${selectedLesson.theoryPdf}`}
+                              width="100%"
+                              height="100%"
                               style={{ border: 'none' }}
                               title="Tài liệu lý thuyết (PDF)"
                             />
+                          </Box>
+                        )}
+
+                        {Array.isArray(selectedLesson.theoryVideos) && selectedLesson.theoryVideos.length > 0 && (
+                          <Box sx={{ mt: 2, mb: 2 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.2 }}>
+                              <OndemandVideoIcon sx={{ color: '#c4302b' }} />
+                              <Typography variant="body2" fontWeight={700} sx={{ color: '#7a4f1d', fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                Video bài giảng
+                              </Typography>
+                            </Stack>
+                            <Stack spacing={2}>
+                              {selectedLesson.theoryVideos.map((item, idx) => {
+                                const rawUrl = typeof item === 'string' ? item : item?.url || '';
+                                const title = typeof item === 'object' && item?.title ? item.title : `Video ${idx + 1}`;
+                                const videoId = extractYouTubeId(rawUrl);
+                                if (!videoId) return null;
+                                return (
+                                  <Box key={idx}>
+                                    <Typography variant="caption" sx={{ color: '#5d3c15', fontWeight: 600 }}>
+                                      {title}
+                                    </Typography>
+                                    <Box sx={{ mt: 0.5, position: 'relative', pt: '56.25%', borderRadius: 2, overflow: 'hidden', border: '1px solid #efe2ce', bgcolor: '#000' }}>
+                                      <iframe
+                                        src={`https://www.youtube.com/embed/${videoId}`}
+                                        title={title}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                      />
+                                    </Box>
+                                  </Box>
+                                );
+                              })}
+                            </Stack>
                           </Box>
                         )}
 

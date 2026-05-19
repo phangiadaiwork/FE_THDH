@@ -42,12 +42,31 @@ import DownloadIcon from '@mui/icons-material/Download';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
+import YouTubeIcon from '@mui/icons-material/YouTube';
 import Navbar from '../components/Navbar';
 import MathText from '../components/MathText';
 import RichTextEditor from '../components/RichTextEditor';
 import api from '../api';
 
 const GRADE_OPTIONS = ['10', '11', '12'];
+
+function extractYouTubeId(url = '') {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  const patterns = [
+    /(?:youtube\.com\/watch\?[^#]*?\bv=)([A-Za-z0-9_-]{11})/,
+    /(?:youtu\.be\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
+    /(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = trimmed.match(re);
+    if (m) return m[1];
+  }
+  return '';
+}
 
 function EditorNode({ data, selected }) {
   return (
@@ -212,6 +231,7 @@ export default function CreateExam() {
   const [exerciseTitle, setExerciseTitle] = useState('Bài tập');
   const [theoryContent, setTheoryContent] = useState('');
   const [theoryPdf, setTheoryPdf] = useState(null);
+  const [theoryVideos, setTheoryVideos] = useState([]);
 
   const fileInputRef = useRef(null);
   const idCounter = useRef(1);
@@ -304,6 +324,11 @@ export default function CreateExam() {
         setExerciseTitle(data.exerciseTitle || 'Bài tập');
         setTheoryContent(data.theoryContent || '');
         setTheoryPdf(data.theoryPdf || null);
+        setTheoryVideos(
+          Array.isArray(data.theoryVideos)
+            ? data.theoryVideos.map((v) => (typeof v === 'string' ? v : v?.url || '')).filter(Boolean)
+            : []
+        );
 
         if (data.nodes && data.nodes.length > 0) {
           layoutAndSetNodes(data.nodes);
@@ -475,6 +500,7 @@ export default function CreateExam() {
         exerciseTitle: exerciseTitle.trim() || 'Bài tập',
         theoryContent,
         theoryPdf,
+        theoryVideos: theoryVideos.map((u) => String(u).trim()).filter(Boolean),
         title: `Bài ${Number(lessonNumber) || 1}: ${lessonTitle.trim()}`,
         nodes,
       };
@@ -708,6 +734,69 @@ export default function CreateExam() {
                         </Typography>
                       )}
                     </Box>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <YouTubeIcon sx={{ color: '#c4302b' }} />
+                      <Typography variant="body2" fontWeight={700} sx={{ color: '#5d3c15' }}>
+                        Video bài giảng (YouTube)
+                      </Typography>
+                      <Box sx={{ flex: 1 }} />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => setTheoryVideos((prev) => [...prev, ''])}
+                      >
+                        Thêm link
+                      </Button>
+                    </Stack>
+                    {theoryVideos.length === 0 && (
+                      <Typography variant="caption" color="text.secondary">
+                        Dán URL YouTube (vd: https://youtu.be/abc12345678) để học sinh xem ngay trong bài học.
+                      </Typography>
+                    )}
+                    <Stack spacing={1.2} sx={{ mt: theoryVideos.length ? 0 : 1 }}>
+                      {theoryVideos.map((url, idx) => {
+                        const videoId = extractYouTubeId(url);
+                        return (
+                          <Box key={idx} sx={{ border: '1px solid #eadcc5', borderRadius: 2, p: 1.2, bgcolor: '#fffdf9' }}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <TextField
+                                fullWidth
+                                size="small"
+                                placeholder="https://www.youtube.com/watch?v=..."
+                                value={url}
+                                onChange={(e) =>
+                                  setTheoryVideos((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
+                                }
+                                error={Boolean(url) && !videoId}
+                                helperText={url && !videoId ? 'Link YouTube không hợp lệ' : ''}
+                              />
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setTheoryVideos((prev) => prev.filter((_, i) => i !== idx))}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                            {videoId && (
+                              <Box sx={{ mt: 1, position: 'relative', pt: '56.25%', borderRadius: 1.5, overflow: 'hidden' }}>
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${videoId}`}
+                                  title={`Xem trước video ${idx + 1}`}
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                />
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Stack>
                   </Grid>
                 </Grid>
               </Paper>
