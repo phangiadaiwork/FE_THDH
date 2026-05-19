@@ -495,12 +495,28 @@ export default function StudentDashboard() {
                           </Typography>
                         </Stack>
 
-                        <Typography variant="body2" fontWeight={700} sx={{ mb: 0.8, color: '#7a4f1d', fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                          Lý thuyết
-                        </Typography>
-                        <Typography component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5 }}>
-                          <MathText component="div">{selectedLesson.theoryContent || 'Bài này chưa có phần lý thuyết chi tiết.'}</MathText>
-                        </Typography>
+                        {(() => {
+                          const hasTheoryText = Boolean(selectedLesson.theoryContent && String(selectedLesson.theoryContent).replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim());
+                          const hasTheoryPdf = Boolean(selectedLesson.theoryPdf);
+                          const hasTheoryVideos = Array.isArray(selectedLesson.theoryVideos) && selectedLesson.theoryVideos.some((v) => extractYouTubeId(typeof v === 'string' ? v : v?.url || ''));
+                          const hasAnyTheory = hasTheoryText || hasTheoryPdf || hasTheoryVideos;
+                          return (
+                            <>
+                              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.8, color: '#7a4f1d', fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                Lý thuyết
+                              </Typography>
+                              {hasTheoryText ? (
+                                <Typography component="div" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5 }}>
+                                  <MathText component="div">{selectedLesson.theoryContent}</MathText>
+                                </Typography>
+                              ) : !hasAnyTheory ? (
+                                <Typography component="div" sx={{ lineHeight: 1.7, fontSize: { xs: '0.85rem', md: '0.95rem' }, mb: 1.5, color: 'text.secondary' }}>
+                                  Bài này chưa có phần lý thuyết chi tiết.
+                                </Typography>
+                              ) : null}
+                            </>
+                          );
+                        })()}
 
                         {selectedLesson.theoryPdf && (
                           <Box sx={{ mt: 2, height: { xs: '80vh', md: '1200px' }, width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>

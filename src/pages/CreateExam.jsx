@@ -834,10 +834,11 @@ export default function CreateExam() {
                       <TextField fullWidth size="small" label="Tên node" value={form.label} onChange={(e) => updateForm('label', e.target.value)} />
                     </Box>
                     <Box>
-                      <RichTextEditor 
-                        label="Câu hỏi" 
-                        value={form.question} 
-                        onChange={(val) => updateForm('question', val)} 
+                      <RichTextEditor
+                        key={`question-${selectedId}`}
+                        label="Câu hỏi"
+                        value={form.question}
+                        onChange={(val) => updateForm('question', val)}
                       />
                     </Box>
                     <ImageUploadField label="câu hỏi" value={form.questionImage} onChange={(url) => updateForm('questionImage', url)} disabled={saving} />
@@ -857,6 +858,7 @@ export default function CreateExam() {
                           <Box key={label}>
                             <Box>
                               <RichTextEditor
+                                key={`option-${selectedId}-${index}`}
                                 label={`Phương án ${label}`}
                                 value={form.options[index]}
                                 onChange={(val) => updateOption(index, val)}
@@ -895,10 +897,11 @@ export default function CreateExam() {
                     </Box>
                     <ImageUploadField label="đáp án" value={form.answerImage} onChange={(url) => updateForm('answerImage', url)} disabled={saving} />
                     <Box>
-                      <RichTextEditor 
-                        label="Gợi ý" 
-                        value={form.hint} 
-                        onChange={(val) => updateForm('hint', val)} 
+                      <RichTextEditor
+                        key={`hint-${selectedId}`}
+                        label="Gợi ý"
+                        value={form.hint}
+                        onChange={(val) => updateForm('hint', val)}
                       />
                     </Box>
                     <ImageUploadField label="gợi ý" value={form.hintImage} onChange={(url) => updateForm('hintImage', url)} disabled={saving} />
